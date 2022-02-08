@@ -1,1 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+ClearPose.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OSX
 *.DS_Store
+
+
+# Data
+data/
+*.png
+*.jpg
+*.json
+*.pdf

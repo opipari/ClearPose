@@ -1,8 +1,8 @@
 from distutils.core import setup
 
 setup(
-    name='PoseClarified',
+    name='ClearPose',
     version='0.1dev',
-    packages=['PoseClarified', ],
+    packages=['ClearPose', ],
     license='MIT license',
 )
