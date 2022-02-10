@@ -7,7 +7,10 @@ from clearpose.networks.transparent6dofpose.stage1.transparent_segmentation.mask
 
 
 from clearpose.datasets.transparent_dataset import TransparentDataset
-
+import torchvision.transforms.functional as F
+import matplotlib.pyplot as plt
+import numpy as np
+from torchvision.utils import draw_bounding_boxes
 
 def get_transform(train):
     transforms = []
@@ -15,6 +18,18 @@ def get_transform(train):
     if train:
         transforms.append(T.RandomHorizontalFlip(0.5))
     return T.Compose(transforms)
+
+
+def show(imgs):
+    if not isinstance(imgs, list):
+        imgs = [imgs]
+    fix, axs = plt.subplots(ncols=len(imgs), squeeze=False)
+    for i, img in enumerate(imgs):
+        img = img.detach()
+        img = F.to_pil_image(img)
+        axs[0, i].imshow(np.asarray(img))
+        axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
+    plt.show()
 
 def main():
 	# train on the GPU or on the CPU, if a GPU is not available
@@ -31,7 +46,7 @@ def main():
 
     # define training and validation data loaders
     data_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=2, shuffle=True, num_workers=4,
+        dataset, batch_size=4, shuffle=True, num_workers=4,
         collate_fn=utils.collate_fn)
 
     data_loader_test = torch.utils.data.DataLoader(
@@ -57,6 +72,8 @@ def main():
     # let's train it for 10 epochs
     num_epochs = 10
 
+
+
     for epoch in range(num_epochs):
         # train for one epoch, printing every 10 iterations
         train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
@@ -65,7 +82,7 @@ def main():
         # evaluate on the test dataset
         evaluate(model, data_loader_test, device=device)
 
-    print("That's it!")
+    # print("That's it!")
 
 
 if __name__=="__main__":

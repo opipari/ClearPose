@@ -33,7 +33,7 @@ class TransparentDataset(Dataset):
 
 		color_path = os.path.join(scene_path, intid+'-color.png')
 		mask_path = os.path.join(scene_path, intid+'-label.png')
-		depth_path = os.path.join(scene_path, intid+'-depth.png')
+		# depth_path = os.path.join(scene_path, intid+'-depth.png')
 		# meta_path = os.path.join(scene_path, intid+'-meta.mat')
 		# box_path = os.path.join(scene_path, intid+'-box.txt')
 
@@ -53,6 +53,10 @@ class TransparentDataset(Dataset):
 		# rotation_translation_matrix = mat['rotation_translation_matrix']
 
 		width, height = mask.size
+		width, height = width//2, height//2
+
+		color = color.resize((width,height))
+		mask = mask.resize((width,height))
 
 		mask = np.array(mask)
 		obj_ids = np.unique(mask)
@@ -77,6 +81,13 @@ class TransparentDataset(Dataset):
 		image_id = torch.tensor([idx])
 		area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
 		iscrowd = torch.zeros((num_objs,), dtype=torch.int64)
+		
+		min_area = 100
+		valid_area = area>min_area
+		boxes = boxes[valid_area]
+		area = area[valid_area]
+		labels = labels[valid_area]
+		masks = masks[valid_area]
 
 		target = {}
 		target["boxes"] = boxes
