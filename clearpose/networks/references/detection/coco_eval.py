@@ -5,7 +5,7 @@ from contextlib import redirect_stdout
 import numpy as np
 import pycocotools.mask as mask_util
 import torch
-import clearpose.networks.transparent6dofpose.stage1.transparent_segmentation.references.detection.utils as utils
+import clearpose.networks.references.detection.utils as utils
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 

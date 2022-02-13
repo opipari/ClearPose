@@ -4,7 +4,7 @@ import os
 import torch
 import torch.utils.data
 import torchvision
-import clearpose.networks.transparent6dofpose.stage1.transparent_segmentation.references.detection.transforms as T
+import clearpose.networks.references.detection.transforms as T
 from pycocotools import mask as coco_mask
 from pycocotools.coco import COCO
 

@@ -45,6 +45,24 @@ class RandomHorizontalFlip(T.RandomHorizontalFlip):
         return image, target
 
 
+class RandomHorizontalFlipSet(T.RandomHorizontalFlip):
+    def forward(
+        self, images: Tuple[Tensor], target: Optional[Dict[str, Tensor]] = None
+    ) -> Tuple[Tensor, Optional[Dict[str, Tensor]]]:
+        if torch.rand(1) < self.p:
+            images = tuple(F.hflip(image) for image in images)
+            if target is not None:
+                width, _ = F.get_image_size(images[0])
+                target["boxes"][:, [0, 2]] = width - target["boxes"][:, [2, 0]]
+                if "masks" in target:
+                    target["masks"] = target["masks"].flip(-1)
+                if "keypoints" in target:
+                    keypoints = target["keypoints"]
+                    keypoints = _flip_coco_person_keypoints(keypoints, width)
+                    target["keypoints"] = keypoints
+        return images, target
+
+
 class ToTensor(nn.Module):
     def forward(
         self, image: Tensor, target: Optional[Dict[str, Tensor]] = None
@@ -54,12 +72,29 @@ class ToTensor(nn.Module):
         return image, target
 
 
+class ToTensorSet(nn.Module):
+    def forward(
+        self, images: Tuple[Tensor], target: Optional[Dict[str, Tensor]] = None
+    ) -> Tuple[Tensor, Optional[Dict[str, Tensor]]]:
+        images = tuple(F.pil_to_tensor(image) for image in images)
+        images = tuple(F.convert_image_dtype(image) for image in images)
+        return images, target
+
+
 class PILToTensor(nn.Module):
     def forward(
         self, image: Tensor, target: Optional[Dict[str, Tensor]] = None
     ) -> Tuple[Tensor, Optional[Dict[str, Tensor]]]:
         image = F.pil_to_tensor(image)
         return image, target
+
+
+class PILToTensorSet(nn.Module):
+    def forward(
+        self, images: Tuple[Tensor], target: Optional[Dict[str, Tensor]] = None
+    ) -> Tuple[Tensor, Optional[Dict[str, Tensor]]]:
+        images = tuple(F.pil_to_tensor(image) for image in images)
+        return images, target
 
 
 class ConvertImageDtype(nn.Module):

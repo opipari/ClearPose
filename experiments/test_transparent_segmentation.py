@@ -22,15 +22,16 @@ def get_transform(train):
 	return T.Compose(transforms)
 
 
-def show(imgs):
+def show(imgs,titles):
 	if not isinstance(imgs, list):
 		imgs = [imgs]
 	fix, axs = plt.subplots(ncols=len(imgs), squeeze=False)
-	for i, img in enumerate(imgs):
+	for i, (img,title) in enumerate(zip(imgs,titles)):
 		img = img.detach()
 		img = F.to_pil_image(img)
 		axs[0, i].imshow(np.asarray(img))
 		axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
+		axs[0, i].set_title(title)
 	plt.show()
 
 def main():
@@ -58,32 +59,34 @@ def main():
 	# get the model using our helper function
 	model = build_model({"num_classes": 63})
 
-
-	# move model to the right device
+	model.load_state_dict(torch.load("./mask_rcnn_14.pt"), strict=False)
 	model.to(device)
 
-	# construct an optimizer
-	params = [p for p in model.parameters() if p.requires_grad]
-	optimizer = torch.optim.SGD(params, lr=0.005,
-								momentum=0.9, weight_decay=0.0005)
-	# and a learning rate scheduler
-	lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-												   step_size=3,
-												   gamma=0.1)
-
-	# let's train it for 10 epochs
-	num_epochs = 100
+	# evaluate(model, data_loader_test, device=device)
 
 
-	torch.save(model.state_dict(), "mask_rcnn_0.pt")
-	for epoch in range(num_epochs):
-		# train for one epoch, printing every 10 iterations
-		train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=100)
-		# update the learning rate
-		lr_scheduler.step()
-		# evaluate on the test dataset
-		evaluate(model, data_loader_test, device=device)
-		torch.save(model.state_dict(), "mask_rcnn_"+str(epoch)+".pt")
+
+
+	model.eval()
+	cpu_device = torch.device("cpu")
+
+	for images, targets in data_loader_test:
+		images = list(img.to(device) for img in images)
+
+		if torch.cuda.is_available():
+			torch.cuda.synchronize()
+		outputs = model(images)
+
+		outputs = [{k: v.to(cpu_device) for k, v in t.items()} for t in outputs]
+
+
+		target_plot = draw_bounding_boxes((255*images[0]).type(torch.uint8).cpu(), targets[0]['boxes'], width=1)
+		box_plot = draw_bounding_boxes((255*images[0]).type(torch.uint8).cpu(), outputs[0]['boxes'], width=1)
+		masks = outputs[0]['masks'][outputs[0]['masks'].sum(1).sum(1).sum(1)<100000]
+		masks = (masks.sum(0)>0.5)
+		mask_plot = draw_bounding_boxes(255*masks.detach().cpu().type(torch.uint8), outputs[0]['boxes'], width=1)
+		alpha_plot = draw_bounding_boxes((255*images[0]).type(torch.uint8).cpu()*masks.detach().cpu().type(torch.uint8), outputs[0]['boxes'], width=1)
+		show([target_plot, alpha_plot],['Ground Truth','Predictions'])
 	
 
 

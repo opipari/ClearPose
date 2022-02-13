@@ -5,18 +5,27 @@ import torch
 from torchvision.utils import draw_bounding_boxes
 import torchvision.transforms.functional as F
 
-from clearpose.networks.references.detection.engine import train_one_epoch, evaluate
-import clearpose.networks.references.detection.utils as utils
-import clearpose.networks.references.detection.transforms as T
+from clearpose.networks.references.segmentation.train import train_one_epoch
+import clearpose.networks.references.segmentation.transforms as T
 
-from clearpose.networks.transparent6dofpose.stage1.transparent_segmentation.mask_rcnn import build_model
-from clearpose.datasets.transparent_segmentation_dataset import TransparentSegmentationDataset
+from clearpose.networks.transparent6dofpose.stage1.surface_normals.deeplabv3 import build_model
+from clearpose.datasets.surface_normal_dataset import SurfaceNormalDataset
 
+
+
+class NormalCriterion():
+	def __init__(self):
+		self.cosine_similarity = torch.nn.CosineSimilarity(dim=1)
+
+	def forward(self, output, target):
+		return torch.mean(self.cosine_similarity(output, target))
 
 
 def get_transform(train):
 	transforms = []
-	transforms.append(T.ToTensor())
+	transforms.append(T.PILToTensor())
+	transforms.append(T.ConvertImageDtype(torch.float))
+	transforms.append(T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]))
 	if train:
 		transforms.append(T.RandomHorizontalFlip(0.5))
 	return T.Compose(transforms)
@@ -38,8 +47,8 @@ def main():
 	device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 	# use our dataset and defined transformations
-	dataset = TransparentSegmentationDataset(transforms=get_transform(train=True))
-	dataset_test = TransparentSegmentationDataset(transforms=get_transform(train=False))
+	dataset = SurfaceNormalDataset(transforms=get_transform(train=True))
+	dataset_test = SurfaceNormalDataset(transforms=get_transform(train=False))
 
 	# split the dataset in train and test set
 	indices = torch.randperm(len(dataset)).tolist()
@@ -48,15 +57,15 @@ def main():
 
 	# define training and validation data loaders
 	data_loader = torch.utils.data.DataLoader(
-		dataset, batch_size=4, shuffle=True, num_workers=4,
-		collate_fn=utils.collate_fn)
+		dataset, batch_size=4, shuffle=True, num_workers=4)
 
 	data_loader_test = torch.utils.data.DataLoader(
-		dataset_test, batch_size=1, shuffle=False, num_workers=4,
-		collate_fn=utils.collate_fn)
+		dataset_test, batch_size=1, shuffle=False, num_workers=4)
+
+	criterion = NormalCriterion()
 
 	# get the model using our helper function
-	model = build_model({"num_classes": 63})
+	model = build_model()
 
 
 	# move model to the right device
@@ -72,18 +81,14 @@ def main():
 												   gamma=0.1)
 
 	# let's train it for 10 epochs
-	num_epochs = 100
+	num_epochs = 10
 
-
-	torch.save(model.state_dict(), "mask_rcnn_0.pt")
+	torch.save(model.state_dict(), "deeplabv3_0.pt")
 	for epoch in range(num_epochs):
 		# train for one epoch, printing every 10 iterations
-		train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=100)
+		train_one_epoch(model, criterion, optimizer, data_loader, lr_scheduler, device, epoch, print_freq=100)
 		# update the learning rate
-		lr_scheduler.step()
-		# evaluate on the test dataset
-		evaluate(model, data_loader_test, device=device)
-		torch.save(model.state_dict(), "mask_rcnn_"+str(epoch)+".pt")
+		torch.save(model.state_dict(), "deeplabv3_"+str(epoch)+".pt")
 	
 
 

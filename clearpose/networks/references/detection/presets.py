@@ -1,5 +1,5 @@
 import torch
-import clearpose.networks.transparent6dofpose.stage1.transparent_segmentation.references.detection.transforms as T
+import clearpose.networks.references.detection.transforms as T
 
 
 class DetectionPresetTrain:

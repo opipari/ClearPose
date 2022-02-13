@@ -4,9 +4,9 @@ import time
 
 import torch
 import torchvision.models.detection.mask_rcnn
-import clearpose.networks.transparent6dofpose.stage1.transparent_segmentation.references.detection.utils as utils
-from clearpose.networks.transparent6dofpose.stage1.transparent_segmentation.references.detection.coco_eval import CocoEvaluator
-from clearpose.networks.transparent6dofpose.stage1.transparent_segmentation.references.detection.coco_utils import get_coco_api_from_dataset
+import clearpose.networks.references.detection.utils as utils
+from clearpose.networks.references.detection.coco_eval import CocoEvaluator
+from clearpose.networks.references.detection.coco_utils import get_coco_api_from_dataset
 
 
 def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, scaler=None):
@@ -81,14 +81,14 @@ def evaluate(model, data_loader, device):
     model.eval()
     metric_logger = utils.MetricLogger(delimiter="  ")
     header = "Test:"
-
+    print('a')
     coco = get_coco_api_from_dataset(data_loader.dataset)
     iou_types = _get_iou_types(model)
     coco_evaluator = CocoEvaluator(coco, iou_types)
-
+    print('b')
     for images, targets in metric_logger.log_every(data_loader, 100, header):
         images = list(img.to(device) for img in images)
-
+        print('i')
         if torch.cuda.is_available():
             torch.cuda.synchronize()
         model_time = time.time()

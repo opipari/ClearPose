@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 
 
-class TransparentDataset(Dataset):
+class Stage1Dataset(Dataset):
 	def __init__(self, image_list="./data/images.csv", 
 					   object_list="./data/objects.csv",
 					   transforms=None):
@@ -33,34 +33,18 @@ class TransparentDataset(Dataset):
 
 		color_path = os.path.join(scene_path, intid+'-color.png')
 		mask_path = os.path.join(scene_path, intid+'-label.png')
-		# depth_path = os.path.join(scene_path, intid+'-depth.png')
-		# meta_path = os.path.join(scene_path, intid+'-meta.mat')
-		# box_path = os.path.join(scene_path, intid+'-box.txt')
+		normal_path = os.path.join(scene_path, intid+'-normal.png')
+		plane_path = os.path.join(scene_path, intid+'-plane.png')
 
 		color = Image.open(color_path).convert("RGB")
 		mask = Image.open(mask_path)
-		# depth = Image.open(depth_path)
-		# boxes = [ln.strip().split() for ln in open(box_path,'r').readlines()]
-		# Bounding Boxes in [tlx, tly, brx, bry]
-		# boxes = [[box[0], self.object_lookup_id[box[0]], [int(i) for i in box[1:5]]] for box in boxes]
-
-		# mat = loadmat(meta_path)
-		# cls_indexes = mat['cls_indexes']
-		# center = mat['center']
-		# factor_depth = mat['factor_depth']
-		# intrinsic_matrix = mat['intrinsic_matrix']
-		# poses = mat['poses']
-		# rotation_translation_matrix = mat['rotation_translation_matrix']
-
-		width, height = mask.size
-		width, height = width//2, height//2
-
-		color = color.resize((width,height))
-		mask = mask.resize((width,height))
+		normal = Image.open(normal_path)
+		plane = Image.open(plane_path)
 
 		mask = np.array(mask)
 		obj_ids = np.unique(mask)
-
+		obj_ids = obj_ids[1:]
+		
 		masks = mask == obj_ids[:, None, None]
 
 		num_objs = len(obj_ids)
@@ -72,6 +56,7 @@ class TransparentDataset(Dataset):
 			ymin = np.min(pos[0])
 			ymax = np.max(pos[0])
 			boxes.append([xmin, ymin, xmax, ymax])
+		
 
 		boxes = torch.as_tensor(boxes, dtype=torch.float32)
 		labels = torch.ones((num_objs,), dtype=torch.int64)
@@ -88,6 +73,7 @@ class TransparentDataset(Dataset):
 		area = area[valid_area]
 		labels = labels[valid_area]
 		masks = masks[valid_area]
+		iscrowd = iscrowd[valid_area]
 
 		target = {}
 		target["boxes"] = boxes
@@ -99,6 +85,9 @@ class TransparentDataset(Dataset):
 
 
 		if self.transforms is not None:
-			color, target = self.transforms(color, target)
-
-		return color, target
+			target_ = target
+			color, target = self.transforms(color, target_)
+			normal, _ = self.transforms(normal, target_)
+			plane, _ = self.transforms(plane, target_)
+		
+		return color, normal, plane, target
