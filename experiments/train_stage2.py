@@ -19,9 +19,20 @@ from torch.utils.data._utils.collate import default_collate
 def get_transform(train):
 	transforms = []
 	transforms.append(T.ToTensorSet())
-	if train:
-		transforms.append(T.RandomHorizontalFlipSet(0.5))
+	# if train:
+	# 	transforms.append(T.RandomHorizontalFlipSet(0.5))
 	return T.Compose(transforms)
+
+
+def loss(pred_r, pred_t, pred_c, target_r, target_t):
+	print(pred_r.shape, pred_t.shape, pred_c.shape)
+	print(target_r.shape, target_t.shape)
+	# rot_anchors = torch.from_numpy(rot_anchors).float().cuda()
+	# rot_anchors = rot_anchors.unsqueeze(0).repeat(bs, 1, 1).permute(0, 2, 1)
+	# cos_dist = torch.bmm(pred_r, rot_anchors)   # bs x num_rot x num_rot
+	# loss_reg = F.threshold((torch.max(cos_dist, 2)[0] - torch.diagonal(cos_dist, dim1=1, dim2=2)), 0.001, 0)
+	# loss_reg = torch.mean(loss_reg)
+
 
 
 def show(imgs,titles,subimgs):
@@ -92,7 +103,11 @@ def main():
 
 	model = build_model({'num_obj': 63})
 	model.cuda()
-	model(color_crops.cuda(), geom_crops.permute(0,2,3,1).cuda(), masks_crops.permute(0,2,3,1).cuda(), obj_ids.cuda())
+	tx, rx, cx = model(color_crops.cuda(), geom_crops.permute(0,2,3,1).cuda(), masks_crops.permute(0,2,3,1).cuda(), obj_ids.cuda())
+
+	print(tx.shape, rx.shape, cx.shape)
+	print([t["quats"] for t in targets])
+	loss(rx, tx, cx, targets["quats"], targets["trans"])
 
 if __name__=="__main__":
 	main()

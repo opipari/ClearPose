@@ -9,7 +9,7 @@ import torchvision
 import clearpose.networks.references.segmentation.utils as utils
 from clearpose.networks.references.segmentation.coco_utils import get_coco
 from torch import nn
-
+import matplotlib.pyplot as plt
 
 try:
     from torchvision import prototype
@@ -79,11 +79,13 @@ def train_one_epoch(model, criterion, optimizer, data_loader, lr_scheduler, devi
     metric_logger = utils.MetricLogger(delimiter="  ")
     metric_logger.add_meter("lr", utils.SmoothedValue(window_size=1, fmt="{value}"))
     header = f"Epoch: [{epoch}]"
+    i=0
     for image, target in metric_logger.log_every(data_loader, print_freq, header):
         image, target = image.to(device), target.to(device)
         with torch.cuda.amp.autocast(enabled=scaler is not None):
             output = model(image)
             loss = criterion(output, target)
+
 
         optimizer.zero_grad()
         if scaler is not None:
@@ -94,10 +96,16 @@ def train_one_epoch(model, criterion, optimizer, data_loader, lr_scheduler, devi
             loss.backward()
             optimizer.step()
 
-        lr_scheduler.step()
+        #lr_scheduler.step()
 
         metric_logger.update(loss=loss.item(), lr=optimizer.param_groups[0]["lr"])
+        i+=1
+        
 
+    fig, ax = plt.subplots(1,2)
+    ax[0].imshow((255*(output[0].permute(1,2,0)+1)/2).type(torch.uint8).cpu().detach())
+    ax[1].imshow((255*(target[0].permute(1,2,0)+1)/2).type(torch.uint8).cpu().detach())
+    plt.savefig('segment_normals.jpg')
 
 def main(args):
     if args.prototype and prototype is None:

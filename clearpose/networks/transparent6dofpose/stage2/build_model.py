@@ -76,7 +76,8 @@ class stage2_model(nn.Module):
 												nn.ReLU(),  
 												nn.Conv1d(256, 128, 1),
 												nn.ReLU(), 
-												nn.Conv1d(128, self.num_obj*self.num_rot*1, 1))
+												nn.Conv1d(128, self.num_obj*self.num_rot*1, 1),
+												nn.Sigmoid())
 
 
 	def get_edge_feature(self, x, nn_idx):

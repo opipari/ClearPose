@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 from torchvision.models.segmentation import deeplabv3_resnet50
 
@@ -19,7 +20,7 @@ class deeplabv3_resnet50_normals(nn.Module):
 		self.deeplabv3.classifier[-1] = nn.Conv2d(in_channels, num_classes, kernel_size, stride)
 		
 	def forward(self, x):
-		normals = self.deeplabv3(x)
+		normals = self.deeplabv3(x)['out']
 		normals = normals / torch.linalg.vector_norm(normals, dim=1, keepdim=True)
 		return normals
 

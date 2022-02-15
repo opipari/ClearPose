@@ -1,7 +1,9 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
 import torch
+import torch.nn as nn
 from torchvision.utils import draw_bounding_boxes
 import torchvision.transforms.functional as F
 
@@ -13,12 +15,18 @@ from clearpose.datasets.surface_normal_dataset import SurfaceNormalDataset
 
 
 
-class NormalCriterion():
+class NormalCriterion(nn.Module):
 	def __init__(self):
+		super(NormalCriterion, self).__init__()
 		self.cosine_similarity = torch.nn.CosineSimilarity(dim=1)
 
 	def forward(self, output, target):
-		return torch.mean(self.cosine_similarity(output, target))
+		norm = torch.linalg.vector_norm(target, dim=1)
+		norm_nonzero = torch.nonzero(norm, as_tuple=True)
+		output_nonzero = output[norm_nonzero[0],:,norm_nonzero[1],norm_nonzero[2]]
+		target_nonzero = target[norm_nonzero[0],:,norm_nonzero[1],norm_nonzero[2]]
+		
+		return torch.mean(1-self.cosine_similarity(output_nonzero, target_nonzero))
 
 
 def get_transform(train):
@@ -42,7 +50,7 @@ def show(imgs):
 		axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
 	plt.show()
 
-def main():
+def main(save_dir=os.path.join("experiments","surface_normals","models")):
 	# train on the GPU or on the CPU, if a GPU is not available
 	device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
@@ -57,7 +65,7 @@ def main():
 
 	# define training and validation data loaders
 	data_loader = torch.utils.data.DataLoader(
-		dataset, batch_size=4, shuffle=True, num_workers=4)
+		dataset, batch_size=4, drop_last=True, shuffle=True, num_workers=4)
 
 	data_loader_test = torch.utils.data.DataLoader(
 		dataset_test, batch_size=1, shuffle=False, num_workers=4)
@@ -83,12 +91,12 @@ def main():
 	# let's train it for 10 epochs
 	num_epochs = 10
 
-	torch.save(model.state_dict(), "deeplabv3_0.pt")
+	torch.save(model.state_dict(), os.path.join(save_dir,"deeplabv3_0.pt"))
 	for epoch in range(num_epochs):
 		# train for one epoch, printing every 10 iterations
 		train_one_epoch(model, criterion, optimizer, data_loader, lr_scheduler, device, epoch, print_freq=100)
 		# update the learning rate
-		torch.save(model.state_dict(), "deeplabv3_"+str(epoch)+".pt")
+		torch.save(model.state_dict(), os.path.join(save_dir,"deeplabv3_"+str(epoch)+".pt"))
 	
 
 

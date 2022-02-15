@@ -73,7 +73,7 @@ class Stage2Dataset(Dataset):
 			boxes.append([xmin, ymin, xmax, ymax])
 		
 		boxes = torch.as_tensor(boxes, dtype=torch.float32)
-		labels = torch.from_numpy(obj_ids, dtype=torch.int64)
+		labels = torch.from_numpy(obj_ids).type(torch.int64)
 		masks = torch.as_tensor(masks, dtype=torch.uint8)
 
 
