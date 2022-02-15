@@ -11,7 +11,7 @@ import torchvision.transforms.functional as F
 import clearpose.networks.references.detection.utils as utils
 import clearpose.networks.references.detection.transforms as T
 
-from clearpose.networks.transparent6dofpose.stage1.transparent_segmentation.mask_rcnn import build_model
+from clearpose.networks.transparent6dofpose.stage2.build_model import build_model
 from clearpose.datasets.stage2_dataset import Stage2Dataset
 
 from torch.utils.data._utils.collate import default_collate
@@ -72,17 +72,27 @@ def main():
 		dataset_test, batch_size=1, shuffle=False, num_workers=4,
 		collate_fn=utils.collate_fn)
 
+	color, color_crops, geom_crops, masks_crops, targets = next(iter(data_loader_test))
+	boxes_per_image = [c.shape[0] for c in color_crops]
+	color, color_crops, geom_crops, masks_crops, obj_ids = torch.stack(color), torch.cat(color_crops), torch.cat(geom_crops), torch.cat(masks_crops), torch.cat([t["labels"] for t in targets]) 
+
 	target_plot = draw_bounding_boxes((255*color[0]).type(torch.uint8).cpu(), targets[0]['boxes'], width=1)
-	masks = targets[0]['masks'][targets[0]['masks'].sum(1).sum(1)<100000]
-	masks = (masks.sum(0)>0.5)
+	masks = (targets[0]['masks'].sum(0)>0.5)
 	alpha_plot = draw_bounding_boxes((255*color[0]).type(torch.uint8).cpu()*masks.detach().cpu().type(torch.uint8), targets[0]['boxes'], width=1)
-	
-	show([target_plot, alpha_plot],['Ground Truth','Predictions'], crops_per_image[0])
 
+	# show([target_plot, alpha_plot],['Ground Truth','color'], color_crops[sum(boxes_per_image[:0]):sum(boxes_per_image[:0+1])])
+	# show([target_plot, alpha_plot],['Ground Truth',' masks'], masks_crops[sum(boxes_per_image[:0]):sum(boxes_per_image[:0+1])])
+	# show([target_plot, alpha_plot],['Ground Truth',' depth'], depth_crops[sum(boxes_per_image[:0]):sum(boxes_per_image[:0+1])])
+	# show([target_plot, alpha_plot],['Ground Truth','normals'], geom_crops[sum(boxes_per_image[:0]):sum(boxes_per_image[:0+1])][:,:3])
+	# show([target_plot, alpha_plot],['Ground Truth','plane'], geom_crops[sum(boxes_per_image[:0]):sum(boxes_per_image[:0+1])][:,3])
+	# show([target_plot, alpha_plot],['Ground Truth','x'], geom_crops[sum(boxes_per_image[:0]):sum(boxes_per_image[:0+1])][:,4])
+	# show([target_plot, alpha_plot],['Ground Truth','y'], geom_crops[sum(boxes_per_image[:0]):sum(boxes_per_image[:0+1])][:,5])
 
-	plt.imshow(crops_per_image[0][0].detach().cpu().permute(1,2,0))
-	plt.show()
+	print(color_crops.shape, geom_crops.shape, masks_crops.shape, obj_ids.shape)
 
+	model = build_model({'num_obj': 63})
+	model.cuda()
+	model(color_crops.cuda(), geom_crops.permute(0,2,3,1).cuda(), masks_crops.permute(0,2,3,1).cuda(), obj_ids.cuda())
 
 if __name__=="__main__":
 	main()

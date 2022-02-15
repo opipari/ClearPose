@@ -59,7 +59,7 @@ class Stage1Dataset(Dataset):
 		
 
 		boxes = torch.as_tensor(boxes, dtype=torch.float32)
-		labels = torch.ones((num_objs,), dtype=torch.int64)
+		labels = torch.from_numpy(obj_ids, dtype=torch.int64)
 		masks = torch.as_tensor(masks, dtype=torch.uint8)
 
 

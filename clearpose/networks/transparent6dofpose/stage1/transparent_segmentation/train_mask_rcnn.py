@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -33,7 +34,7 @@ def show(imgs):
 		axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
 	plt.show()
 
-def main():
+def main(config={"num_classes": 63}, save_dir=os.path.join("experiments","transparent_segmentation","models")):
 	# train on the GPU or on the CPU, if a GPU is not available
 	device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
@@ -48,7 +49,7 @@ def main():
 
 	# define training and validation data loaders
 	data_loader = torch.utils.data.DataLoader(
-		dataset, batch_size=4, shuffle=True, num_workers=4,
+		dataset, batch_size=2, shuffle=True, num_workers=4,
 		collate_fn=utils.collate_fn)
 
 	data_loader_test = torch.utils.data.DataLoader(
@@ -56,7 +57,7 @@ def main():
 		collate_fn=utils.collate_fn)
 
 	# get the model using our helper function
-	model = build_model({"num_classes": 63})
+	model = build_model(config)
 
 
 	# move model to the right device
@@ -74,8 +75,8 @@ def main():
 	# let's train it for 10 epochs
 	num_epochs = 100
 
-
-	torch.save(model.state_dict(), "mask_rcnn_0.pt")
+	
+	torch.save(model.state_dict(), os.path.join(save_dir,"mask_rcnn_0.pt"))
 	for epoch in range(num_epochs):
 		# train for one epoch, printing every 10 iterations
 		train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=100)
@@ -83,7 +84,7 @@ def main():
 		lr_scheduler.step()
 		# evaluate on the test dataset
 		evaluate(model, data_loader_test, device=device)
-		torch.save(model.state_dict(), "mask_rcnn_"+str(epoch)+".pt")
+		torch.save(model.state_dict(), os.path.join(save_dir,"mask_rcnn_"+str(epoch)+".pt"))
 	
 
 

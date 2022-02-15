@@ -1,11 +1,14 @@
 import os
+import cv2
 from scipy.io import loadmat
+from scipy.spatial.transform import Rotation as R
 from PIL import Image
 import numpy as np
 
 import torch
 from torch.utils.data import Dataset
 from torchvision.transforms import functional as F
+from torchvision.ops import roi_align
 
 import matplotlib.pyplot as plt
 
@@ -45,11 +48,12 @@ class Stage2Dataset(Dataset):
 		color = Image.open(color_path).convert("RGB")
 		mask = Image.open(mask_path)
 		normal = Image.open(normal_path)
-		plane = Image.open(plane_path)
-		depth = Image.open(depth_path)
+		plane = np.array(Image.open(plane_path))
+		depth = np.array(Image.open(depth_path))
 		meta = loadmat(meta_path)
-
 		
+		depth = Image.fromarray(depth/meta['factor_depth'].item())
+		plane = Image.fromarray(plane/meta['factor_depth'].item())
 
 
 		mask = np.array(mask)
@@ -68,9 +72,8 @@ class Stage2Dataset(Dataset):
 			ymax = np.max(pos[0])
 			boxes.append([xmin, ymin, xmax, ymax])
 		
-
 		boxes = torch.as_tensor(boxes, dtype=torch.float32)
-		labels = torch.ones((num_objs,), dtype=torch.int64)
+		labels = torch.from_numpy(obj_ids, dtype=torch.int64)
 		masks = torch.as_tensor(masks, dtype=torch.uint8)
 
 
@@ -94,13 +97,10 @@ class Stage2Dataset(Dataset):
 		target["area"] = area
 		target["iscrowd"] = iscrowd
 
-
 		if self.transforms is not None:
 			(color,normal,plane,depth), target = self.transforms((color,normal,plane,depth), target)
 		
-		depth = depth/meta['factor_depth'].item()
-		plane = plane/meta['factor_depth'].item()
-
+		
 		H, W = depth.shape[1:]
 		U, V = np.tile(np.arange(W), (H, 1)), np.tile(np.arange(H), (W, 1)).T
 		fx, fy, cx, cy = self.intrinsic[0, 0], self.intrinsic[1, 1], self.intrinsic[0, 2], self.intrinsic[1, 2]
@@ -108,27 +108,22 @@ class Stage2Dataset(Dataset):
 
 		X = F.convert_image_dtype(X)
 		Y = F.convert_image_dtype(Y)
-		uv = torch.stack([X,Y])
+		Z = F.convert_image_dtype(depth)
+		uv = torch.stack([X,Y,Z]).squeeze(1)
 
+		boxes_per_image = len(target['boxes'])
+		crops_color = roi_align(color.unsqueeze(0), [target['boxes']], (80,80), 1, 1)
 
+		crops_normal = roi_align(normal.unsqueeze(0), [target['boxes']], (80,80), 1, 1)
+		crops_plane = roi_align(plane.unsqueeze(0), [target['boxes']], (80,80), 1, 1)
+		crops_uvz = roi_align(uv.unsqueeze(0), [target['boxes']], (80,80), 1, 1)
+		crops_masks = roi_align(target["masks"].unsqueeze(1).type(torch.float32), [box.unsqueeze(0) for box in target['boxes']], (80,80), 1, 1)
+		# crops_depth = roi_align(depth.unsqueeze(0), [target['boxes']], (80,80), 1, 1)
+		crops_geometry_per_image = torch.cat([crops_normal, crops_plane, crops_uvz], dim=1)
 
-		from torchvision.ops import roi_align
-		color, normal, plane, uv, targets = next(iter(data_loader))
-		color, normal, plane, uv = torch.stack(color), torch.stack(normal), torch.stack(plane), torch.stack(uv)
+		poses = np.transpose(meta['poses'], (2,0,1))
+		target["poses"] = torch.from_numpy(poses)
+		target["quats"] = torch.stack([torch.from_numpy(R.from_matrix(rmat[:, :3]).as_quat()) for rmat in poses])
+		target["trans"] = torch.stack([torch.from_numpy(rmat[:, 3]) for rmat in poses])
 
-		
-		boxes_per_image = [len(t['boxes']) for t in targets]
-		crops_color = roi_align(color, [t['boxes'] for t in targets], (80,80), 1, 1)
-		crops_color_per_image = [crops_color[sum(boxes_per_image[:i]):sum(boxes_per_image[:i+1])] for i in range(len(boxes_per_image))]
-
-		crops_normal = roi_align(normal, [t['boxes'] for t in targets], (80,80), 1, 1)
-		crops_plane = roi_align(plane, [t['boxes'] for t in targets], (80,80), 1, 1)
-		crops_uv = roi_align(uv, [t['boxes'] for t in targets], (80,80), 1, 1)
-		crops_geometry_per_image = []
-		for i in range(len(boxes_per_image)):
-			crops_geometry.append(torch.cat([crops_normal[sum(boxes_per_image[:i]):sum(boxes_per_image[:i+1])],
-											crops_plane[sum(boxes_per_image[:i]):sum(boxes_per_image[:i+1])],
-											crops_uv[sum(boxes_per_image[:i]):sum(boxes_per_image[:i+1])]],
-											dim=1))
-		
-		return color, normal, plane, uv, target
+		return color, crops_color, crops_geometry_per_image, crops_masks, target
