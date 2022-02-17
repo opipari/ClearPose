@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import EdgeConv
+# from torch_geometric.nn import EdgeConv
 
-from clearpose.networks.transparent6dofpose.stage2.posenet.pspnet import PSPNet
-from clearpose.networks.transparent6dofpose.stage2.posenet.utils import sample_rotations_60
+from clearpose.networks.references.posenet.pspnet import PSPNet
+from clearpose.networks.references.posenet.utils import sample_rotations_60
 
 psp_models = {
 	'resnet18': lambda: PSPNet(sizes=(1, 2, 3, 6), psp_size=512, deep_features_size=256, backend='resnet18'),
@@ -96,7 +96,7 @@ class stage2_model(nn.Module):
 		return edge_feature
 
 	def forward(self, color, geometry, masks, obj):
-
+		print(masks.shape, geometry.shape)
 		choose = masks.flatten(start_dim=1).nonzero(as_tuple=True)
 		nonzeros = torch.count_nonzero(masks.flatten(start_dim=1),dim=1)
 		nonzeros_cumsum = torch.cumsum(nonzeros,0)
@@ -104,7 +104,6 @@ class stage2_model(nn.Module):
 		choose = tuple(c[nonzero_samples] for c in choose)
 			
 		color_emb = self.color_cnn(color).permute(0,2,3,1)
-
 		color_emb_samples = color_emb.flatten(start_dim=1, end_dim=2)[choose].view(nonzeros_cumsum.shape[0], self.N, color_emb.shape[-1])
 		geometry_samples = geometry.flatten(start_dim=1, end_dim=2)[choose].view(nonzeros_cumsum.shape[0], self.N, 7)
 		point_samples = geometry_samples[:,:,4:]
@@ -149,7 +148,7 @@ class stage2_model(nn.Module):
 							), dim=2).contiguous().view(out_rx.shape[0], self.num_rot, 4, 4)
 		out_rx = torch.squeeze(torch.matmul(out_rx, rot_anchors), dim=3)
 
-		return out_tx, out_rx, out_cx
+		return out_tx, out_rx, out_cx, choose
 
 def build_model(config):
 	model = stage2_model(config["num_obj"])

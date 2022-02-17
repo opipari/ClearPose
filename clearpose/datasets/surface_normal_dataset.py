@@ -32,8 +32,9 @@ class SurfaceNormalDataset(Dataset):
 		color = Image.open(color_path).convert("RGB")
 		normal = Image.open(normal_path).convert("RGB")
 
-		color = color.resize((color.size[0]//2, color.size[1]//2))
-		normal = normal.resize((normal.size[0]//2, normal.size[1]//2))
+		# print((color.size[0]//1.5, color.size[1]//1.5))
+		color = color.resize((int(color.size[0]//1.5), int(color.size[1]//1.5)))
+		normal = normal.resize((int(normal.size[0]//1.5), int(normal.size[1]//1.5)))
 
 		if self.transforms is not None:
 			color, normal = self.transforms(color, normal)

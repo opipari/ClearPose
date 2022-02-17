@@ -65,7 +65,7 @@ def main(save_dir=os.path.join("experiments","surface_normals","models")):
 
 	# define training and validation data loaders
 	data_loader = torch.utils.data.DataLoader(
-		dataset, batch_size=4, drop_last=True, shuffle=True, num_workers=4)
+		dataset, batch_size=2, drop_last=True, shuffle=True, num_workers=4)
 
 	data_loader_test = torch.utils.data.DataLoader(
 		dataset_test, batch_size=1, shuffle=False, num_workers=4)
@@ -97,7 +97,7 @@ def main(save_dir=os.path.join("experiments","surface_normals","models")):
 		train_one_epoch(model, criterion, optimizer, data_loader, lr_scheduler, device, epoch, print_freq=100)
 		# update the learning rate
 		torch.save(model.state_dict(), os.path.join(save_dir,"deeplabv3_"+str(epoch)+".pt"))
-	
+		lr_scheduler.step()
 
 
 if __name__=="__main__":
