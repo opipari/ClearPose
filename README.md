@@ -18,6 +18,20 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
+Compile the ransac voting layer:
+
+```bash
+cd path_to_object-posenet/lib/ransac_voting
+python setup.py install --user
+```
+
+Compile the gpu version of knn:
+
+```bash
+cd path_to_object-posenet/lib/knn
+python setup.py install --user
+```
+
 ## Model Training
 
 ### Stage One

@@ -96,7 +96,6 @@ class stage2_model(nn.Module):
 		return edge_feature
 
 	def forward(self, color, geometry, masks, obj):
-		print(masks.shape, geometry.shape)
 		choose = masks.flatten(start_dim=1).nonzero(as_tuple=True)
 		nonzeros = torch.count_nonzero(masks.flatten(start_dim=1),dim=1)
 		nonzeros_cumsum = torch.cumsum(nonzeros,0)
@@ -147,7 +146,6 @@ class stage2_model(nn.Module):
 							out_rx[:, :, :, 3],  out_rx[:, :, :, 2], -out_rx[:, :, :, 1],  out_rx[:, :, :, 0], \
 							), dim=2).contiguous().view(out_rx.shape[0], self.num_rot, 4, 4)
 		out_rx = torch.squeeze(torch.matmul(out_rx, rot_anchors), dim=3)
-
 		return out_tx, out_rx, out_cx, choose
 
 def build_model(config):

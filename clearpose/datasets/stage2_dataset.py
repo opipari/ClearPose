@@ -20,6 +20,7 @@ class Stage2Dataset(Dataset):
 					   model_dir="./data",
 					   transforms=None):
 		self.N = 500
+		self.N_mesh = 500
 		self.image_list = [ln.strip().split(',') for ln in open(image_list,'r').readlines()]
 		self.object_counts = np.cumsum(np.array([int(ln[-1]) for ln in self.image_list]))
 		self.object_list = [ln.strip().split(',') for ln in open(object_list,'r').readlines()]
@@ -35,15 +36,23 @@ class Stage2Dataset(Dataset):
 
 
 		
-		obj_filenames = []
+		self.obj_filenames = []
 		for label_ in sorted(self.object_lookup_name.keys()):
 			obj_filename = os.path.join(model_dir, "model", self.object_lookup_name[label_], self.object_lookup_name[label_]+".obj")
-			obj_filenames.append(obj_filename)
+			self.obj_filenames.append(obj_filename)
 
 
 		# Load obj file
-		self.meshes = load_objs_as_meshes(obj_filenames, device=torch.device('cpu'))
+		self.meshes = load_objs_as_meshes(self.obj_filenames, device=torch.device('cpu'))
 		
+		self.diameters = []
+		for mesh in self.meshes:
+			obj_cld = mesh.verts_padded()[0]
+			obj_center = (obj_cld.min(0).values + obj_cld.max(0).values) / 2.0
+			obj_cld = obj_cld - obj_center
+			obj_diameter = torch.max(torch.linalg.norm(obj_cld, axis=1)) * 2
+			self.diameters.append(obj_diameter)
+
 
 	def __len__(self):
 		return self.object_counts[-1]
@@ -57,7 +66,6 @@ class Stage2Dataset(Dataset):
 		if img_idx>0:
 			idx_offset = idx-self.object_counts[img_idx-1]
 
-		print(idx_offset)
 		color_path = os.path.join(scene_path, imgid+'-color.png')
 		mask_path = os.path.join(scene_path, imgid+'-label.png')
 		normal_path = os.path.join(scene_path, imgid+'-normal_true.png')
@@ -74,7 +82,6 @@ class Stage2Dataset(Dataset):
 		
 		depth = Image.fromarray(depth/meta['factor_depth'].item())
 		plane = Image.fromarray(plane/meta['factor_depth'].item())
-
 
 		mask = np.array(mask)
 		obj_ids = meta['cls_indexes'].flatten()
@@ -112,12 +119,12 @@ class Stage2Dataset(Dataset):
 		X = F.convert_image_dtype(X)
 		Y = F.convert_image_dtype(Y)
 		Z = F.convert_image_dtype(depth)
-		uv = torch.stack([X,Y,Z]).squeeze(1)
+		uvz = torch.stack([X,Y,Z]).squeeze(1)
 
 		crops_color = roi_align(color.unsqueeze(0), [target['boxes']], (80,80), 1, 1)
 		crops_normal = roi_align(normal.unsqueeze(0), [target['boxes']], (80,80), 1, 1)
 		crops_plane = roi_align(plane.unsqueeze(0), [target['boxes']], (80,80), 1, 1)
-		crops_uvz = roi_align(uv.unsqueeze(0), [target['boxes']], (80,80), 1, 1)
+		crops_uvz = roi_align(uvz.unsqueeze(0), [target['boxes']], (80,80), 1, 1)
 		crops_masks = roi_align(masks.unsqueeze(0).unsqueeze(0).type(torch.float32), [target['boxes']], (80,80), 1, 1)
 		crops_geometry_per_image = torch.cat([crops_normal, crops_plane, crops_uvz], dim=1)
 
@@ -126,14 +133,17 @@ class Stage2Dataset(Dataset):
 		target["quats"] = torch.stack([torch.from_numpy(R.from_matrix(rmat[:, :3]).as_quat()) for rmat in poses])[:,[3,0,1,2]][idx_offset].unsqueeze(0)
 		target["trans_gt"] = torch.stack([torch.from_numpy(rmat[:, 3]) for rmat in poses])[idx_offset].unsqueeze(0)
 		target["trans"] = target["trans_gt"].view(1,3,1,1) - crops_uvz
-		target["trans"] = target["trans"] / torch.linalg.vector_norm(target["trans"], dim=0, keepdim=True)
+		target["trans"] = target["trans"] / torch.linalg.vector_norm(target["trans"], dim=1, keepdim=True)
 
-		mesh = self.meshes[list(target['labels'])]
+		mesh = self.meshes[list(target['labels']-1)]
 		mesh_pre_rot = mesh.verts_padded()
 		mesh = mesh.update_padded(quaternion_apply(target['quats'].unsqueeze(1).type(torch.float32), mesh.verts_padded()))
 		mesh_post_rot = mesh.verts_padded()
 
-		target["mesh"] = mesh_pre_rot
-		target["mesh_rot"] = mesh_post_rot
+		mesh_samples = np.random.choice(range(mesh_pre_rot.shape[1]), size=self.N_mesh)
+
+		target["mesh"] = mesh_pre_rot[:,mesh_samples]
+		target["mesh_rot"] = mesh_post_rot[:,mesh_samples]
+		target["diameter"] = self.diameters[obj_ids-1]
 
 		return color, crops_color, crops_geometry_per_image, crops_masks, target

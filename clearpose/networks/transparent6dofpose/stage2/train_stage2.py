@@ -1,9 +1,13 @@
+import os
 import math
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
+from scipy.spatial.transform import Rotation as R
+
 import torch
+import torch.nn as nn
 from torchvision.utils import draw_bounding_boxes
 import torchvision.transforms.functional as TF
 import torch.nn.functional as F
@@ -16,6 +20,8 @@ import clearpose.networks.references.detection.transforms as T
 from clearpose.networks.transparent6dofpose.stage2.build_model import build_model
 from clearpose.datasets.stage2_dataset import Stage2Dataset
 
+from clearpose.networks.references.posenet.ransac_voting.ransac_voting_gpu import ransac_voting_layer
+
 from torch.utils.data._utils.collate import default_collate
 
 def get_transform(train):
@@ -26,18 +32,47 @@ def get_transform(train):
 	return T.Compose(transforms)
 
 
-def loss(pred_r, pred_t, pred_c, target_r, target_t,choose):
+class Loss(nn.Module):
+	def __init__(self, rot_anchors):
+		super(Loss, self).__init__()
+		self.rot_anchors = rot_anchors
 
-	target_t_samples = target_t.permute(0,2,3,1).flatten(start_dim=1, end_dim=2)[choose].view(pred_t.shape).to(pred_t.device)
-	
-	# rot_anchors = torch.from_numpy(rot_anchors).float().cuda()
-	# rot_anchors = rot_anchors.unsqueeze(0).repeat(bs, 1, 1).permute(0, 2, 1)
-	# cos_dist = torch.bmm(pred_r, rot_anchors)   # bs x num_rot x num_rot
-	# loss_reg = F.threshold((torch.max(cos_dist, 2)[0] - torch.diagonal(cos_dist, dim1=1, dim2=2)), 0.001, 0)
-	# loss_reg = torch.mean(loss_reg)
+	def forward(self, pred_t, pred_r, pred_c, target_r, target_t, model_points, choose, diameters):
+		bs = pred_r.shape[0]
+		num_rot = self.rot_anchors.shape[0]
 
-	loss_t = F.smooth_l1_loss(pred_t, target_t_samples, reduction='mean')
-	return loss_t
+		rot_anchors = torch.from_numpy(self.rot_anchors).float().to(pred_r.device)
+		rot_anchors = rot_anchors.unsqueeze(0).repeat(bs, 1, 1).permute(0, 2, 1)
+
+		cos_dist = torch.bmm(pred_r, rot_anchors)   # bs x num_rot x num_rot
+		loss_reg = F.threshold((torch.max(cos_dist, 2)[0] - torch.diagonal(cos_dist, dim1=1, dim2=2)), 0.001, 0)
+		loss_reg = torch.mean(loss_reg)
+
+
+		# rotation loss
+		rotations = torch.cat(((1.0 - 2.0*(pred_r[:, :, 2]**2 + pred_r[:, :, 3]**2)).view(bs, num_rot, 1),\
+							   (2.0*pred_r[:, :, 1]*pred_r[:, :, 2] - 2.0*pred_r[:, :, 0]*pred_r[:, :, 3]).view(bs, num_rot, 1), \
+							   (2.0*pred_r[:, :, 0]*pred_r[:, :, 2] + 2.0*pred_r[:, :, 1]*pred_r[:, :, 3]).view(bs, num_rot, 1), \
+							   (2.0*pred_r[:, :, 1]*pred_r[:, :, 2] + 2.0*pred_r[:, :, 3]*pred_r[:, :, 0]).view(bs, num_rot, 1), \
+							   (1.0 - 2.0*(pred_r[:, :, 1]**2 + pred_r[:, :, 3]**2)).view(bs, num_rot, 1), \
+							   (-2.0*pred_r[:, :, 0]*pred_r[:, :, 1] + 2.0*pred_r[:, :, 2]*pred_r[:, :, 3]).view(bs, num_rot, 1), \
+							   (-2.0*pred_r[:, :, 0]*pred_r[:, :, 2] + 2.0*pred_r[:, :, 1]*pred_r[:, :, 3]).view(bs, num_rot, 1), \
+							   (2.0*pred_r[:, :, 0]*pred_r[:, :, 1] + 2.0*pred_r[:, :, 2]*pred_r[:, :, 3]).view(bs, num_rot, 1), \
+							   (1.0 - 2.0*(pred_r[:, :, 1]**2 + pred_r[:, :, 2]**2)).view(bs, num_rot, 1)), dim=2).contiguous().view(bs,num_rot, 3, 3)
+		rotations = rotations.contiguous().transpose(3, 2).contiguous()
+
+		loss_r = 0
+		for i in range(len(model_points)):
+			obj_diameter = diameters[i]
+			model_points_ = model_points[i].view(1, 1, model_points[i].shape[1], 3).repeat(1, num_rot, 1, 1).view(1*num_rot, model_points[i].shape[1], 3)
+			model_points_ = model_points_.to(rotations.device)
+			pred_r = torch.bmm(model_points_, rotations[i])
+			dist = torch.linalg.vector_norm(pred_r.unsqueeze(2) - target_r[i].unsqueeze(1).to(pred_r.device), dim=3)
+			loss_r += torch.mean(torch.mean(dist.min(2)[0], dim=1) / (obj_diameter*pred_c[i]) + torch.log(pred_c[i]), dim=0)
+
+		target_t_samples = target_t.permute(0,2,3,1).flatten(start_dim=1, end_dim=2)[choose].view(pred_t.shape).to(pred_t.device)
+		loss_t = F.smooth_l1_loss(pred_t, target_t_samples, reduction='mean')
+		return loss_t, loss_r, loss_reg, loss_t
 
 
 def show(imgs,titles,subimgs):
@@ -66,7 +101,110 @@ def show(imgs,titles,subimgs):
 
 	plt.show()
 
-def main():
+def train_one_epoch(model, criterion, optimizer, data_loader, device, epoch, print_freq, scaler=None):
+	model.train()
+	metric_logger = utils.MetricLogger(delimiter="  ")
+	metric_logger.add_meter("lr", utils.SmoothedValue(window_size=1, fmt="{value}"))
+	header = f"Epoch: [{epoch}]"
+
+	i=0
+	for color, color_crops, geom_crops, masks_crops, targets in metric_logger.log_every(data_loader, print_freq, header):
+		# boxes_per_image = [c.shape[0] for c in color_crops]
+		color, color_crops, geom_crops, masks_crops, obj_ids = torch.stack(color), torch.cat(color_crops), torch.cat(geom_crops), torch.cat(masks_crops), torch.cat([t["labels"] for t in targets]) 
+		
+		target_quats = torch.cat([t["quats"] for t in targets])
+		target_trans = torch.cat([t["trans"] for t in targets])
+		target_diameters = torch.stack([t["diameter"] for t in targets])
+		target_meshes = [t["mesh"] for t in targets]
+		target_mesh_rots = [t["mesh_rot"] for t in targets]
+
+		color_crops = color_crops.to(device)
+		geom_crops = geom_crops.to(device)
+		masks_crops = masks_crops.to(device)
+		obj_ids = obj_ids.to(device)
+		with torch.cuda.amp.autocast(enabled=scaler is not None):
+			tx, rx, cx, choose = model(color_crops, geom_crops.permute(0,2,3,1), masks_crops.permute(0,2,3,1), obj_ids)
+			loss, loss_r, loss_reg, loss_t = criterion(tx, rx, cx, target_mesh_rots, target_trans, target_meshes, choose, target_diameters)
+
+
+		optimizer.zero_grad()
+		if scaler is not None:
+			scaler.scale(loss).backward()
+			scaler.step(optimizer)
+			scaler.update()
+		else:
+			loss.backward()
+			optimizer.step()
+
+
+		metric_logger.update(loss=loss.item(), lr=optimizer.param_groups[0]["lr"], loss_r=loss_r, loss_reg=loss_reg, loss_t=loss_t)
+		
+		if i>500:
+			break
+		i+=1
+
+def test(model, criterion, optimizer, data_loader, device, print_freq, scaler=None):
+	model.eval()
+	metric_logger = utils.MetricLogger(delimiter="  ")
+	header = f"Test"
+
+	success_count = [0 for i in range(model.num_obj)]
+	num_count = [0 for i in range(model.num_obj)]
+
+	j = 0
+	for color, color_crops, geom_crops, masks_crops, targets in metric_logger.log_every(data_loader, print_freq, header):
+		# boxes_per_image = [c.shape[0] for c in color_crops]
+		color, color_crops, geom_crops, masks_crops, obj_ids = torch.stack(color), torch.cat(color_crops), torch.cat(geom_crops), torch.cat(masks_crops), torch.cat([t["labels"] for t in targets]) 
+		
+		target_quats = torch.cat([t["quats"] for t in targets])
+		target_trans = torch.cat([t["trans"] for t in targets])
+		target_diameters = torch.stack([t["diameter"] for t in targets])
+		target_meshes = [t["mesh"] for t in targets]
+		target_mesh_rots = [t["mesh_rot"] for t in targets]
+
+		color_crops = color_crops.to(device)
+		geom_crops = geom_crops.to(device).permute(0,2,3,1)
+		masks_crops = masks_crops.to(device).permute(0,2,3,1)
+		obj_ids = obj_ids.to(device)
+		with torch.cuda.amp.autocast(enabled=scaler is not None):
+			pred_t, pred_r, pred_c, choose = model(color_crops, geom_crops, masks_crops, obj_ids)
+			loss, loss_r, loss_reg, loss_t = criterion(pred_t, pred_r, pred_c, target_mesh_rots, target_trans, target_meshes, choose, target_diameters)
+
+		
+		how_min, which_min = torch.min(pred_c, 1)
+
+		points = geom_crops[:,:,:,4:].flatten(start_dim=1, end_dim=2)[choose].view(geom_crops.shape[0], model.N, 3)
+
+		pred_t, pred_mask = ransac_voting_layer(points, pred_t, inlier_thresh=0.01)
+		pred_t = pred_t.cpu().data.numpy()
+
+		for obj_i in range(pred_r.shape[0]):
+			pred_r_ = pred_r[obj_i][which_min[obj_i]].view(-1).cpu().data.numpy()
+			pred_r_ = R.from_quat(pred_r_[[1,2,3,0]]).as_matrix()
+			pred_t_ = pred_t[obj_i]
+			model_points_ = targets[obj_i]["mesh"][0].cpu().detach().numpy()
+			pred = np.dot(model_points_, pred_r_.T) + pred_t_
+			target = targets[obj_i]["mesh_rot"][0].cpu().detach().numpy() + targets[obj_i]["trans_gt"][0].cpu().data.numpy()
+			dis = torch.linalg.vector_norm(torch.from_numpy(pred).type(torch.float32).unsqueeze(1) - torch.from_numpy(target).type(torch.float32).unsqueeze(0), dim=2)
+			dis = torch.mean(torch.min(dis, dim=1).values)
+			
+			if dis < 0.1 * target_diameters[obj_i]:
+				success_count[targets[obj_i]["labels"][0].item()] += 1
+			num_count[targets[obj_i]["labels"][0].item()] += 1
+
+		if j>100:
+			break
+		j+=1
+		# metric_logger.update(loss=loss.item(), loss_r=loss_r, loss_reg=loss_reg, loss_t=loss_t)
+	
+	for i in range(len(success_count)):
+		if num_count[i]>0:
+			print(i,success_count[i]/num_count[i])
+
+
+
+
+def main(save_dir=os.path.join("experiments","stage2","models")):
 	# train on the GPU or on the CPU, if a GPU is not available
 	device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
@@ -88,16 +226,11 @@ def main():
 		dataset_test, batch_size=1, shuffle=False, num_workers=4,
 		collate_fn=utils.collate_fn)
 
-	color, color_crops, geom_crops, masks_crops, targets = next(iter(data_loader))
-	boxes_per_image = [c.shape[0] for c in color_crops]
-	color, color_crops, geom_crops, masks_crops, obj_ids = torch.stack(color), torch.cat(color_crops), torch.cat(geom_crops), torch.cat(masks_crops), torch.cat([t["labels"] for t in targets]) 
 	
-	target_quats = torch.cat([t["quats"] for t in targets])
-	target_trans = torch.cat([t["trans"] for t in targets])
 
-	target_plot = draw_bounding_boxes((255*color[0]).type(torch.uint8).cpu(), targets[0]['boxes'], width=1)
-	masks = (targets[0]['masks'].sum(0)>0.5)
-	alpha_plot = draw_bounding_boxes((255*color[0]).type(torch.uint8).cpu()*masks.detach().cpu().type(torch.uint8), targets[0]['boxes'], width=1)
+	# target_plot = draw_bounding_boxes((255*color[0]).type(torch.uint8).cpu(), targets[0]['boxes'], width=1)
+	# masks = (targets[0]['masks'].sum(0)>0.5)
+	# alpha_plot = draw_bounding_boxes((255*color[0]).type(torch.uint8).cpu()*masks.detach().cpu().type(torch.uint8), targets[0]['boxes'], width=1)
 
 	# show([target_plot, alpha_plot],['Ground Truth','color'], color_crops[sum(boxes_per_image[:0]):sum(boxes_per_image[:0+1])])
 	# show([target_plot, alpha_plot],['Ground Truth',' masks'], masks_crops[sum(boxes_per_image[:0]):sum(boxes_per_image[:0+1])])
@@ -107,11 +240,34 @@ def main():
 	# show([target_plot, alpha_plot],['Ground Truth','x'], geom_crops[sum(boxes_per_image[:0]):sum(boxes_per_image[:0+1])][:,4])
 	# show([target_plot, alpha_plot],['Ground Truth','y'], geom_crops[sum(boxes_per_image[:0]):sum(boxes_per_image[:0+1])][:,5])
 
-	model = build_model({'num_obj': 63})
-	model.cuda()
-	tx, rx, cx, choose = model(color_crops.cuda(), geom_crops.permute(0,2,3,1).cuda(), masks_crops.permute(0,2,3,1).cuda(), obj_ids.cuda())
+	
 
-	loss(rx, tx, cx, target_quats, target_trans, choose)
+	model = build_model({'num_obj': 61})
+	model.to(device)
+	criterion = Loss(model.rot_anchors)
 
+
+	# construct an optimizer
+	params = [p for p in model.parameters() if p.requires_grad]
+	optimizer = torch.optim.Adam(params, lr=0.001)
+	# and a learning rate scheduler
+	lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
+												   step_size=3,
+												   gamma=0.1)
+
+	# let's train it for 10 epochs
+	num_epochs = 10
+
+	torch.save(model.state_dict(), os.path.join(save_dir,"stage2_0.pt"))
+	
+
+	for epoch in range(num_epochs):
+		# train for one epoch, printing every 10 iterations
+		train_one_epoch(model, criterion, optimizer, data_loader, device, epoch, print_freq=100)
+		# update the learning rate
+		torch.save(model.state_dict(), os.path.join(save_dir,"stage2_"+str(epoch)+".pt"))
+		lr_scheduler.step()
+		test(model, criterion, optimizer, data_loader, device, print_freq=100)
+		print('tested')
 if __name__=="__main__":
 	main()
