@@ -99,7 +99,7 @@ class stage2_model(nn.Module):
 		choose = masks.flatten(start_dim=1).nonzero(as_tuple=True)
 		nonzeros = torch.count_nonzero(masks.flatten(start_dim=1),dim=1)
 		nonzeros_cumsum = torch.cumsum(nonzeros,0)
-		nonzero_samples = torch.cat([torch.randint(high=nonzeros_cumsum[1], size=(self.N,))] + [torch.randint(low=nonzeros_cumsum[i], high=nonzeros_cumsum[i+1], size=(self.N,)) for i in range(nonzeros_cumsum.shape[0]-1)])
+		nonzero_samples = torch.cat([torch.randint(high=nonzeros_cumsum[0], size=(self.N,))] + [torch.randint(low=nonzeros_cumsum[i], high=nonzeros_cumsum[i+1], size=(self.N,)) for i in range(nonzeros_cumsum.shape[0]-1)])
 		choose = tuple(c[nonzero_samples] for c in choose)
 			
 		color_emb = self.color_cnn(color).permute(0,2,3,1)

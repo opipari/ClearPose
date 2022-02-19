@@ -84,9 +84,10 @@ def main():
 
 
 	# Load obj file
+	print(target['quats'].shape, target['trans_gt'].shape)
 	mesh = load_objs_as_meshes(obj_filenames, device=device)
-	mesh = mesh.update_padded(quaternion_apply(target['quats'].unsqueeze(1).to(device).type(torch.float32), mesh.verts_padded()))
-	mesh = mesh.update_padded(Translate(target['trans'].to(device).type(torch.float32)).transform_points(mesh.verts_padded()))
+	mesh = mesh.update_padded(quaternion_apply(target['quats'].to(device).type(torch.float32), mesh.verts_padded()))
+	mesh = mesh.update_padded(Translate(target['trans_gt'].to(device).type(torch.float32)).transform_points(mesh.verts_padded()))
 
 	# Initialize each vertex to be white in color.
 	verts_rgb = torch.ones_like(mesh.verts_padded())  # (1, V, 3)

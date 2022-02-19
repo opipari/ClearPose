@@ -59,6 +59,7 @@ class Stage2Dataset(Dataset):
 
 
 	def __getitem__(self, idx):
+		idx = idx % 12
 		img_idx = np.argmax(idx<self.object_counts)
 		_, scene_path, imgid, _ = self.image_list[img_idx]
 
@@ -135,7 +136,7 @@ class Stage2Dataset(Dataset):
 		target["trans"] = target["trans_gt"].view(1,3,1,1) - crops_uvz
 		target["trans"] = target["trans"] / torch.linalg.vector_norm(target["trans"], dim=1, keepdim=True)
 
-		mesh = self.meshes[list(target['labels']-1)]
+		mesh = self.meshes[list(target['labels']-1)].clone()
 		mesh_pre_rot = mesh.verts_padded()
 		mesh = mesh.update_padded(quaternion_apply(target['quats'].unsqueeze(1).type(torch.float32), mesh.verts_padded()))
 		mesh_post_rot = mesh.verts_padded()
@@ -147,3 +148,7 @@ class Stage2Dataset(Dataset):
 		target["diameter"] = self.diameters[obj_ids-1]
 
 		return color, crops_color, crops_geometry_per_image, crops_masks, target
+
+
+
+
