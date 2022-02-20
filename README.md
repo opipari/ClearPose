@@ -84,4 +84,10 @@ Stage One
 Stage Two
  - `python clearpose/xu_6dof/networks/stage2/train_stage2.py`
 
+<<<<<<< HEAD
+=======
+Stage Two
+ - `python clearpose/networks/transparent6dofpose/stage1/surface_normals/train_deeplabv3.py`
+
+>>>>>>> eb338c8d2b3e05a4552bcd5911bbea9906e3fd65
 </details>
