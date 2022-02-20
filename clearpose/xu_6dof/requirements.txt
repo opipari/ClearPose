@@ -1,0 +1,9 @@
+torch==1.10.0
+torchvision==0.11.1
+matplotlib==3.5.1
+pycocotools==2.0.4
+scipy==1.8.0
+fvcore==0.1.5.post20220212
+iopath==0.1.9
+plotly==5.6.0
+https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py38_cu102_pyt1100/pytorch3d-0.6.1-cp38-cp38-linux_x86_64.whl
