@@ -359,7 +359,7 @@ def plot_test(color, dataset, quats, trans, quats_true, trans_true, labels):
 
 
 
-def main(save_dir=os.path.join("experiments","stage2","models")):
+def main(save_dir=os.path.join("experiments","xu_6dof","stage2","models")):
 	# train on the GPU or on the CPU, if a GPU is not available
 	device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 

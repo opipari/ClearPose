@@ -34,7 +34,7 @@ def show(imgs):
 		axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
 	plt.show()
 
-def main(config={"num_classes": 63}, save_dir=os.path.join("experiments","transparent_segmentation","models")):
+def main(config={"num_classes": 63}, save_dir=os.path.join("experiments","xu_6dof","stage1","transparent_segmentation","models")):
 	# train on the GPU or on the CPU, if a GPU is not available
 	device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
