@@ -29,7 +29,7 @@ class TransparentSegmentationDataset(Dataset):
 
 
 	def __getitem__(self, idx):
-		_, scene_path, intid = self.image_list[idx]
+		_, scene_path, intid, _ = self.image_list[idx]
 
 		color_path = os.path.join(scene_path, intid+'-color.png')
 		mask_path = os.path.join(scene_path, intid+'-label.png')

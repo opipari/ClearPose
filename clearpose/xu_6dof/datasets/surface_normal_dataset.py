@@ -24,7 +24,7 @@ class SurfaceNormalDataset(Dataset):
 
 
 	def __getitem__(self, idx):
-		_, scene_path, intid = self.image_list[idx]
+		_, scene_path, intid, _ = self.image_list[idx]
 
 		color_path = os.path.join(scene_path, intid+'-color.png')
 		normal_path = os.path.join(scene_path, intid+'-normal_true.png')
