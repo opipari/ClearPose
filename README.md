@@ -1,17 +1,14 @@
-# PoseClarified
+# ClearPose
 
 
 
-## Setup
-
-
-### Dataset
+## Dataset
 
 
 ## Models 
 
 
-#### (RGB) Peng et al. PVNet
+### (RGB) Peng et al. PVNet
 
 <details>
 <summary><strong>Setup</strong></summary>
@@ -28,7 +25,7 @@ pip install -e .
 
 </details>
 
-#### (RGB-D) He et al. FFB6D
+### (RGB-D) He et al. FFB6D
 
 <details>
 <summary><strong>Setup</strong></summary>
@@ -46,7 +43,7 @@ pip install -e .
 </details>
 
 
-#### (RGB-D) Xu et al. 6DoF Transparent
+### (RGB-D) Xu et al. 6DoF Transparent
 
 <details>
 <summary><strong>Setup</strong></summary>
@@ -64,7 +61,7 @@ pip install -e .
 Compile the ransac voting layer:
 
 ```bash
-cd clearpose/xu_6dof//networks/references/posenet/ransac_voting
+cd clearpose/xu_6dof/networks/references/posenet/ransac_voting
 python setup.py install
 ```
 
@@ -72,20 +69,10 @@ python setup.py install
 
 
 
+<details>
+<summary><strong>Training</strong></summary>
 
-
-
-
-Compile the gpu version of knn:
-
-```bash
-cd path_to_object-posenet/lib/knn
-python setup.py install --user
-```
-
-## Model Training
-
-### Stage One
+Stage One
 
  - Mask R-CNN
  `python clearpose/networks/transparent6dofpose/stage1/transparent_segmentation/train_mask_rcnn.py`
@@ -94,4 +81,7 @@ python setup.py install --user
  `python clearpose/networks/transparent6dofpose/stage1/surface_normals/train_deeplabv3.py`
 
 
-## Stage Two
+Stage Two
+ - `python clearpose/networks/transparent6dofpose/stage1/surface_normals/train_deeplabv3.py`
+
+</details>
