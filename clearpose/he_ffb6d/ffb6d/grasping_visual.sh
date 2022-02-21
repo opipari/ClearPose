@@ -1,0 +1,1 @@
+python grasping_visual.py -checkpoint train_log/ycb/checkpoints/FFB6D_baseline.pth.tar -dataset ycb 
