@@ -7,17 +7,17 @@ def main():
 	train_sets = ['set1','set4','set5','set6','set7']
 
 	root = "/media/mytre/6358C6357FEBD1E6/"
-	sets = [sett for sett in os.listdir(root) if sett.startswith('set')]
+	sets = [sett for sett in sorted(os.listdir(root)) if sett.startswith('set')]
 	sets = [sett for sett in sets if sett in train_sets]
 	img_id = 0
 	for sett in sets:
 		root_set = os.path.join(root, sett)
-		scenes = [scn for scn in os.listdir(root_set) if scn.startswith('scene')][:-1]
+		scenes = [scn for scn in sorted(os.listdir(root_set)) if scn.startswith('scene')][:-1]
 
 		for scene in scenes:
 			root_set_scene = os.path.join(root_set, scene)
-			data_files = os.listdir(root_set_scene)
-			
+			data_files = sorted(os.listdir(root_set_scene))
+
 			meta_path = os.path.join(root_set_scene,'metadata.mat')
 			meta = loadmat(meta_path)
 
@@ -43,21 +43,21 @@ def main():
 	test_summary_file = open('./data/test_images.csv', 'w')
 	val_summary_file = open('./data/val_images.csv', 'w')
 
-	sets = [sett for sett in os.listdir(root) if sett.startswith('set')]
+	sets = [sett for sett in sorted(os.listdir(root)) if sett.startswith('set')]
 
 	img_id = 0
 	for sett in sets:
 		root_set = os.path.join(root, sett)
 		
 		if sett in train_sets:
-			scenes = [scn for scn in os.listdir(root_set) if scn.startswith('scene')][-1:]
+			scenes = [scn for scn in sorted(os.listdir(root_set)) if scn.startswith('scene')][-1:]
 		else:
-			scenes = [scn for scn in os.listdir(root_set) if scn.startswith('scene')]
+			scenes = [scn for scn in sorted(os.listdir(root_set)) if scn.startswith('scene')]
 
 
 		for scene in scenes:
 			root_set_scene = os.path.join(root_set, scene)
-			data_files = os.listdir(root_set_scene)
+			data_files = sorted(os.listdir(root_set_scene))
 
 			meta_path = os.path.join(root_set_scene,'metadata.mat')
 			meta = loadmat(meta_path)
