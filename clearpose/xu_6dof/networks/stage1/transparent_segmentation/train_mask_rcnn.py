@@ -49,7 +49,7 @@ def main(config={"num_classes": 63}, save_dir=os.path.join("experiments","xu_6do
 
 	# define training and validation data loaders
 	data_loader = torch.utils.data.DataLoader(
-		dataset, batch_size=2, shuffle=True, num_workers=4,
+		dataset, batch_size=5, shuffle=True, num_workers=4,
 		collate_fn=utils.collate_fn)
 
 	data_loader_test = torch.utils.data.DataLoader(
@@ -65,25 +65,18 @@ def main(config={"num_classes": 63}, save_dir=os.path.join("experiments","xu_6do
 
 	# construct an optimizer
 	params = [p for p in model.parameters() if p.requires_grad]
-	optimizer = torch.optim.SGD(params, lr=0.005,
-								momentum=0.9, weight_decay=0.0005)
-	# and a learning rate scheduler
-	lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-												   step_size=3,
-												   gamma=0.1)
+	optimizer = torch.optim.Adam(params, lr=0.001, weight_decay=0.0005)
+	
 
 	# let's train it for 10 epochs
 	num_epochs = 100
-
 	
 	torch.save(model.state_dict(), os.path.join(save_dir,"mask_rcnn_0.pt"))
 	for epoch in range(num_epochs):
 		# train for one epoch, printing every 10 iterations
 		train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=100)
-		# update the learning rate
-		lr_scheduler.step()
 		# evaluate on the test dataset
-		evaluate(model, data_loader_test, device=device)
+		# evaluate(model, data_loader_test, device=device)
 		torch.save(model.state_dict(), os.path.join(save_dir,"mask_rcnn_"+str(epoch)+".pt"))
 	
 

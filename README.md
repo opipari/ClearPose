@@ -51,7 +51,7 @@ pip install -e .
 Setup virtual environment 
 
 ```bash
-python3 -m venv .venv/xu-6dof-env
+python3.8 -m venv .venv/xu-6dof-env
 source .venv/xu-6dof-env/bin/activate
 pip install --upgrade pip
 pip install -r clearpose/xu_6dof/requirements.txt
