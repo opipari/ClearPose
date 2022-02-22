@@ -19,3 +19,19 @@ data/
 *.json
 *.pdf
 *.pt
+
+## for ffb6d
+****/*.tar
+****/*.pkl
+__pycache__
+*/__pycache__
+*/*/__pycache__
+*/*/*/__pycache__
+*/*/*/*/__pycache__
+****/*.so
+ffb6d/datasets/ycb/YCB_Video_Dataset
+ffb6d/datasets/linemod/Linemod_preprocessed
+ffb6d/datasets/ycb/YCB_Video_Dataset
+ffb6d/datasets/clearpose/dataset
+apex/
+normalSpeed/

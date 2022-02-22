@@ -30,8 +30,10 @@ class ConfigRandLA:
 class Config:
     def __init__(self, ds_name='ycb', cls_type=''):
         self.dataset_name = ds_name
-        self.exp_dir = os.path.dirname(__file__)
+        # self.exp_dir = os.path.dirname(__file__)
+        self.exp_dir = "/home/huijie/research/transparentposeestimation/ClearPose/experiments/he_ffb6d"
         self.exp_name = os.path.basename(self.exp_dir)
+        
         self.resnet_ptr_mdl_p = os.path.abspath(
             os.path.join(
                 self.exp_dir,
@@ -55,8 +57,8 @@ class Config:
 
         self.n_total_epoch = 20
         self.mini_batch_size = 6
-        self.val_mini_batch_size = 6
-        self.test_mini_batch_size = 6
+        self.val_mini_batch_size = 2
+        self.test_mini_batch_size = 2
 
         self.n_sample_points = 480 * 640 // 24  # Number of input points
         self.n_keypoints = 8
@@ -99,11 +101,7 @@ class Config:
 
             self.n_classes = self.n_objects
             self.use_orbfps = False
-            self.clearpose_root = os.path.abspath(
-                os.path.join(
-                    self.exp_dir, 'datasets/clearpose/dataset'
-                )
-            )
+            self.clearpose_root = "/home/huijie/research/transparentposeestimation/ClearPose/clearpose/he_ffb6d/ffb6d/datasets/clearpose/dataset"
 
             self.clearpose_obj_dict = {
             "beaker_1": 1,
@@ -181,6 +179,8 @@ class Config:
             #     "set1": [1],
             # }
 
+
+
             self.test_list = {
                 "set1": [5],
                 "set2": [1, 3, 4, 5, 6],
@@ -200,52 +200,6 @@ class Config:
             self.depth_test = "GT"
 
             self.mask_ignore = 500
-
-        else:  # linemod
-            self.n_objects = 1 + 1  # 1 object + background
-            self.n_classes = self.n_objects
-            self.lm_cls_lst = [
-                1, 2, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15
-            ]
-            self.lm_sym_cls_ids = [10, 11]
-            self.lm_obj_dict = {
-                'ape': 1,
-                'benchvise': 2,
-                'cam': 4,
-                'can': 5,
-                'cat': 6,
-                'driller': 8,
-                'duck': 9,
-                'eggbox': 10,
-                'glue': 11,
-                'holepuncher': 12,
-                'iron': 13,
-                'lamp': 14,
-                'phone': 15,
-            }
-            try:
-                self.cls_id = self.lm_obj_dict[cls_type]
-            except Exception:
-                pass
-            self.lm_id2obj_dict = dict(
-                zip(self.lm_obj_dict.values(), self.lm_obj_dict.keys())
-            )
-            self.lm_root = os.path.abspath(
-                os.path.join(self.exp_dir, 'datasets/linemod/')
-            )
-            self.use_orbfps = True
-            self.kp_orbfps_dir = 'datasets/linemod/kps_orb9_fps/'
-            self.kp_orbfps_ptn = os.path.join(self.kp_orbfps_dir, '%s_%d_kps.txt')
-            # FPS
-            self.lm_fps_kps_dir = os.path.abspath(
-                os.path.join(self.exp_dir, 'datasets/linemod/lm_obj_kps/')
-            )
-
-            lm_r_pth = os.path.join(self.lm_root, "dataset_config/models_info.yml")
-            lm_r_file = open(os.path.join(lm_r_pth), "r")
-            self.lm_r_lst = yaml.load(lm_r_file)
-
-            self.val_nid_ptn = "/data/6D_Pose_Data/datasets/LINEMOD/pose_nori_lists/{}_real_val.nori.list"
 
         self.intrinsic_matrix = {
             'linemod': np.array([[572.4114, 0.,         325.2611],
@@ -272,5 +226,5 @@ class Config:
             ]
 
 
-config = Config()
+# config = Config()
 # vim: ts=4 sw=4 sts=4 expandtab

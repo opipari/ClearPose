@@ -15,9 +15,10 @@ except Exception:
     from cv2 import imshow, waitKey
 
 
-config = Config(ds_name='ycb')
+# config = Config(ds_name='ycb')
+config = Config(ds_name='clearpose')
 bs_utils = Basic_Utils(config)
-cls_lst = config.ycb_cls_lst
+cls_lst = config.clearpose_obj_dict
 try:
     config_lm = Config(ds_name="linemod")
     bs_utils_lm = Basic_Utils(config_lm)

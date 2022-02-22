@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.model_zoo as model_zoo
 
-from common import config
+from common import Config
 
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
@@ -21,6 +21,7 @@ model_urls = {
     'resnet152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
 }
 
+config = Config(ds_name='clearpose')
 
 def load_weights_sequential(target, source_state):
     new_dict = OrderedDict()
