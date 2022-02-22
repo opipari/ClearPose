@@ -111,9 +111,10 @@ def reduce_dict(input_dict, average=True):
 
 
 class MetricLogger:
-    def __init__(self, delimiter="\t"):
+    def __init__(self, delimiter="\t", logfile=None):
         self.meters = defaultdict(SmoothedValue)
         self.delimiter = delimiter
+        self.logfile = logfile
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
@@ -187,12 +188,32 @@ class MetricLogger:
                             memory=torch.cuda.max_memory_allocated() / MB,
                         )
                     )
+                    if self.logfile is not None:
+                        self.logfile.write(
+                            log_msg.format(
+                                i,
+                                len(iterable),
+                                eta=eta_string,
+                                meters=str(self),
+                                time=str(iter_time),
+                                data=str(data_time),
+                                memory=torch.cuda.max_memory_allocated() / MB,
+                            )+'\n'
+                        )
+                        self.logfile.flush()
                 else:
                     print(
                         log_msg.format(
                             i, len(iterable), eta=eta_string, meters=str(self), time=str(iter_time), data=str(data_time)
                         )
                     )
+                    if self.logfile is not None:
+                        self.logfile.write(
+                            log_msg.format(
+                                i, len(iterable), eta=eta_string, meters=str(self), time=str(iter_time), data=str(data_time)
+                            )+'\n'
+                        )
+                        self.logfile.flush()
             i += 1
             end = time.time()
         total_time = time.time() - start_time

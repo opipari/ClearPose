@@ -35,6 +35,7 @@ def show(imgs):
 		axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
 	plt.show()
 
+
 def main(config={"num_classes": 63}, save_dir=os.path.join("experiments","xu_6dof","stage1","transparent_segmentation","models")):
 	# train on the GPU or on the CPU, if a GPU is not available
 	device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -42,11 +43,6 @@ def main(config={"num_classes": 63}, save_dir=os.path.join("experiments","xu_6do
 	# use our dataset and defined transformations
 	dataset = TransparentSegmentationDataset(image_list="./data/train_images.csv", transforms=get_transform(train=True))
 	dataset_test = TransparentSegmentationDataset(image_list="./data/test_images.csv", transforms=get_transform(train=False))
-
-	# split the dataset in train and test set
-	indices = torch.randperm(len(dataset)).tolist()
-	dataset = torch.utils.data.Subset(dataset, indices[:-50])
-	dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
 
 	# define training and validation data loaders
 	data_loader = torch.utils.data.DataLoader(
@@ -72,6 +68,8 @@ def main(config={"num_classes": 63}, save_dir=os.path.join("experiments","xu_6do
 											   step_size=120000,
 											   gamma=0.1)
 
+	logfile = open(os.path.join(save_dir,"mask_rcnn_log.txt"), 'w')
+
 	# let's train it for 10 epochs
 	num_epochs = 100
 	
@@ -80,10 +78,9 @@ def main(config={"num_classes": 63}, save_dir=os.path.join("experiments","xu_6do
 				'optimizer_state_dict': optimizer.state_dict(),
 				'scheduler_state_dict': lr_scheduler.state_dict()},
 				os.path.join(save_dir,"mask_rcnn_0.pt"))
+
 	for epoch in range(num_epochs):
-		# train for one epoch, printing every 10 iterations
-		train_one_epoch(model, optimizer, data_loader, device, epoch, lr_scheduler_=lr_scheduler, print_freq=100)
-		# evaluate on the test dataset
+		train_one_epoch(model, optimizer, data_loader, device, epoch, lr_scheduler_=lr_scheduler, print_freq=100, logfile=logfile)
 		# evaluate(model, data_loader_test, device=device)
 		torch.save({'epoch': epoch,
 				'model_state_dict': model.state_dict(),
@@ -91,10 +88,12 @@ def main(config={"num_classes": 63}, save_dir=os.path.join("experiments","xu_6do
 				'scheduler_state_dict': lr_scheduler.state_dict()},
 				os.path.join(save_dir,"mask_rcnn_"+str(epoch)+".pt"))
 	
+	logfile.close()
 
 
 if __name__=="__main__":
 	torch.manual_seed(0)
 	random.seed(0)
 	np.random.seed(0)
+		
 	main()
