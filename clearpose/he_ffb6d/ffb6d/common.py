@@ -53,10 +53,10 @@ class Config:
         self.log_traininfo_dir = os.path.join(self.log_dir, 'train_info', self.cls_type)
         ensure_fd(self.log_traininfo_dir)
 
-        self.n_total_epoch = 5
+        self.n_total_epoch = 20
         self.mini_batch_size = 6
         self.val_mini_batch_size = 6
-        self.test_mini_batch_size = 1
+        self.test_mini_batch_size = 6
 
         self.n_sample_points = 480 * 640 // 24  # Number of input points
         self.n_keypoints = 8
@@ -94,6 +94,113 @@ class Config:
             self.ycb_r_lst = list(np.loadtxt(ycb_r_lst_p))
             self.ycb_cls_lst = self.read_lines(self.ycb_cls_lst_p)
             self.ycb_sym_cls_ids = [13, 16, 19, 20, 21]
+        elif self.dataset_name == 'clearpose':
+            self.n_objects = 63 + 1  # 21 objects + background
+
+            self.n_classes = self.n_objects
+            self.use_orbfps = False
+            self.clearpose_root = os.path.abspath(
+                os.path.join(
+                    self.exp_dir, 'datasets/clearpose/dataset'
+                )
+            )
+
+            self.clearpose_obj_dict = {
+            "beaker_1": 1,
+            "dropper_1": 2,
+            "dropper_2": 3,
+            "flask_1": 4,
+            "funnel_1": 5,
+            "graduated_cylinder_1": 6,
+            "graduated_cylinder_2": 7,
+            "pan_1": 8,
+            "pan_2": 9,
+            "pan_3": 10,
+            "reagent_bottle_1": 11,
+            "reagent_bottle_2": 12,
+            "stick_1": 13,
+            "syringe_1": 14,
+            "bottle_1": 15,
+            "bottle_2": 16,
+            "bottle_3": 17,
+            "bottle_4": 18,
+            "bottle_5": 19,
+            "bowl_1": 20,
+            "bowl_2": 21,
+            "bowl_3": 22,
+            "bowl_4": 23,
+            "bowl_5": 24,
+            "bowl_6": 25,
+            "container_1": 26,
+            "container_2": 27,
+            "container_3": 28,
+            "container_4": 29,
+            "container_5": 30,
+            "fork_1": 31,
+            "knife_1": 32,
+            "knife_2": 33,
+            "mug_1": 34,
+            "mug_2": 35,
+            "pitcher_1": 36,
+            "plate_1": 37,
+            "plate_2": 38,
+            "spoon_1": 39,
+            "spoon_2": 40,
+            "water_cup_1": 41,
+            "water_cup_2": 42,
+            "water_cup_3": 43,
+            "water_cup_4": 44,
+            "water_cup_5": 45,
+            "water_cup_6": 46,
+            "water_cup_7": 47,
+            "water_cup_8": 48,
+            "water_cup_9": 49,
+            "water_cup_10": 50,
+            "water_cup_11": 51,
+            "water_cup_12": 52,
+            "water_cup_13": 53,
+            "water_cup_14": 54,
+            "wine_cup_1": 55,
+            "wine_cup_2": 56,
+            "wine_cup_3": 57,
+            "wine_cup_4": 58,
+            "wine_cup_5": 59,
+            "wine_cup_6": 60,
+            "wine_cup_7": 61,
+            "wine_cup_8": 62,
+            "wine_cup_9": 63
+            }
+            self.train_list = {
+                "set1": [1, 2, 3, 4],
+                "set4": [1, 2, 3, 4, 5],
+                "set5": [1, 2, 3, 4, 5],
+                "set6": [1, 2, 3, 4, 5],
+                "set7": [1, 2, 3, 4, 5]
+            }
+            # self.train_list = {
+            #     "set1": [1],
+            # }
+
+            self.test_list = {
+                "set1": [5],
+                "set2": [1, 3, 4, 5, 6],
+                "set3": [1, 3, 4, 8, 11],
+                "set4": [6],
+                "set5": [6],
+                "set6": [6],
+                "set7": [6],
+                "set8": [1, 2, 3, 4, 5, 6]          
+            }
+
+            self.train_ratio = 1.0
+            self.test_ratio = 1.0
+
+            ## train could be ["GT", "raw", "depthcomplete"]
+            self.depth_train = "GT"
+            self.depth_test = "GT"
+
+            self.mask_ignore = 500
+
         else:  # linemod
             self.n_objects = 1 + 1  # 1 object + background
             self.n_classes = self.n_objects
@@ -152,7 +259,10 @@ class Config:
                                 [0.      , 0.        , 1.0]], np.float32),
             'ycb_K2': np.array([[1077.836, 0.        , 323.7872],
                                 [0.      , 1078.189  , 279.6921],
-                                [0.      , 0.        , 1.0]], np.float32)
+                                [0.      , 0.        , 1.0]], np.float32),
+            'clearpose': np.array([[601.3, 0.        , 334.7],
+                                   [0.      , 601.3  , 248.0],
+                                   [0.      , 0.        , 1.0]], np.float32)
         }
 
     def read_lines(self, p):

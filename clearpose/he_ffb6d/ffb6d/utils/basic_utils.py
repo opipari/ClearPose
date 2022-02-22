@@ -628,6 +628,7 @@ class Basic_Utils():
             cors = np.loadtxt(cor_pattern.format(cls), dtype=np.float32)
             ctr = cors.mean(0)
             self.ycb_cls_ctr_dict[cls] = ctr
+        
         else:
             if cls in self.lm_cls_ctr_dict.keys():
                 return self.lm_cls_ctr_dict[cls].copy()
@@ -638,6 +639,7 @@ class Basic_Utils():
             ctr = cors.mean(0)
             self.lm_cls_ctr_dict[cls] = ctr
         return ctr.copy()
+
 
     def cal_auc(self, add_dis, max_dis=0.1):
         D = np.array(add_dis)
