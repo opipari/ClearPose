@@ -1,4 +1,5 @@
 import os
+import random
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -65,21 +66,35 @@ def main(config={"num_classes": 63}, save_dir=os.path.join("experiments","xu_6do
 
 	# construct an optimizer
 	params = [p for p in model.parameters() if p.requires_grad]
-	optimizer = torch.optim.Adam(params, lr=0.001, weight_decay=0.0005)
+	optimizer = torch.optim.SGD(params, lr=0.005, momentum=0.9, weight_decay=0.0001)
 	
+	lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
+											   step_size=120000,
+											   gamma=0.1)
 
 	# let's train it for 10 epochs
 	num_epochs = 100
 	
-	torch.save(model.state_dict(), os.path.join(save_dir,"mask_rcnn_0.pt"))
+	torch.save({'epoch': -1,
+				'model_state_dict': model.state_dict(),
+				'optimizer_state_dict': optimizer.state_dict(),
+				'scheduler_state_dict': lr_scheduler.state_dict()},
+				os.path.join(save_dir,"mask_rcnn_0.pt"))
 	for epoch in range(num_epochs):
 		# train for one epoch, printing every 10 iterations
-		train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=100)
+		train_one_epoch(model, optimizer, data_loader, device, epoch, lr_scheduler_=lr_scheduler, print_freq=100)
 		# evaluate on the test dataset
 		# evaluate(model, data_loader_test, device=device)
-		torch.save(model.state_dict(), os.path.join(save_dir,"mask_rcnn_"+str(epoch)+".pt"))
+		torch.save({'epoch': epoch,
+				'model_state_dict': model.state_dict(),
+				'optimizer_state_dict': optimizer.state_dict(),
+				'scheduler_state_dict': lr_scheduler.state_dict()},
+				os.path.join(save_dir,"mask_rcnn_"+str(epoch)+".pt"))
 	
 
 
 if __name__=="__main__":
+	torch.manual_seed(0)
+	random.seed(0)
+	np.random.seed(0)
 	main()

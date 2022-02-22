@@ -9,7 +9,7 @@ from clearpose.xu_6dof.networks.references.detection.coco_eval import CocoEvalua
 from clearpose.xu_6dof.networks.references.detection.coco_utils import get_coco_api_from_dataset
 
 
-def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, scaler=None):
+def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, scaler=None, lr_scheduler_=None):
     model.train()
     metric_logger = utils.MetricLogger(delimiter="  ")
     metric_logger.add_meter("lr", utils.SmoothedValue(window_size=1, fmt="{value:.6f}"))
@@ -54,6 +54,9 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, sc
         if lr_scheduler is not None:
             lr_scheduler.step()
 
+        if lr_scheduler_ is not None:
+            lr_scheduler_.step()
+            
         metric_logger.update(loss=losses_reduced, **loss_dict_reduced)
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
 
