@@ -39,8 +39,8 @@ def main(config={"num_classes": 63}, save_dir=os.path.join("experiments","xu_6do
 	device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 	# use our dataset and defined transformations
-	dataset = TransparentSegmentationDataset(transforms=get_transform(train=True))
-	dataset_test = TransparentSegmentationDataset(transforms=get_transform(train=False))
+	dataset = TransparentSegmentationDataset(image_list="./data/train_images.csv", transforms=get_transform(train=True))
+	dataset_test = TransparentSegmentationDataset(image_list="./data/test_images.csv", transforms=get_transform(train=False))
 
 	# split the dataset in train and test set
 	indices = torch.randperm(len(dataset)).tolist()
