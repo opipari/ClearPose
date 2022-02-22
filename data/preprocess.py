@@ -6,7 +6,7 @@ def main():
 	train_summary_file = open('./data/train_images.csv', 'w')
 	train_sets = ['set1','set4','set5','set6','set7']
 
-	root = "/media/logan/6358C6357FEBD1E6/"
+	root = "/media/mytre/6358C6357FEBD1E6/"
 	sets = [sett for sett in os.listdir(root) if sett.startswith('set')]
 	sets = [sett for sett in sets if sett in train_sets]
 	img_id = 0
@@ -16,10 +16,8 @@ def main():
 
 		for scene in scenes:
 			root_set_scene = os.path.join(root_set, scene)
-			try:
-				data_files = os.listdir(root_set_scene)
-			except OSError:
-				continue
+			data_files = os.listdir(root_set_scene)
+			
 			meta_path = os.path.join(root_set_scene,'metadata.mat')
 			meta = loadmat(meta_path)
 
@@ -43,9 +41,8 @@ def main():
 
 
 	test_summary_file = open('./data/test_images.csv', 'w')
+	val_summary_file = open('./data/val_images.csv', 'w')
 
-
-	root = "/media/logan/6358C6357FEBD1E6/"
 	sets = [sett for sett in os.listdir(root) if sett.startswith('set')]
 
 	img_id = 0
@@ -60,10 +57,8 @@ def main():
 
 		for scene in scenes:
 			root_set_scene = os.path.join(root_set, scene)
-			try:
-				data_files = os.listdir(root_set_scene)
-			except OSError:
-				continue
+			data_files = os.listdir(root_set_scene)
+
 			meta_path = os.path.join(root_set_scene,'metadata.mat')
 			meta = loadmat(meta_path)
 
@@ -79,9 +74,13 @@ def main():
 				obj_ids = obj_ids.flatten()
 				num_objs = len(obj_ids)
 
-				test_summary_file.write("{},{},{},{}\n".format(img_id, root_set_scene, intid, num_objs))
+				if img_id%100==0:
+					val_summary_file.write("{},{},{},{}\n".format(img_id, root_set_scene, intid, num_objs))
+				else:
+					test_summary_file.write("{},{},{},{}\n".format(img_id, root_set_scene, intid, num_objs))
 				img_id += 1
 	
+	val_summary_file.close()
 	test_summary_file.close()
 
 	

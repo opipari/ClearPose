@@ -4,6 +4,7 @@ __pycache__/
 .venv/
 ClearPose.egg-info/
 *.egg-info/
+*.egg*
 
 # Jupyter
 .ipynb_checkpoints/
