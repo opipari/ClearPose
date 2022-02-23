@@ -33,14 +33,17 @@ class SurfaceNormalDataset(Dataset):
 		normal = Image.open(normal_path).convert("RGB")
 
 		# print((color.size[0]//1.5, color.size[1]//1.5))
-		color = color.resize((int(color.size[0]//1.5), int(color.size[1]//1.5)))
-		normal = normal.resize((int(normal.size[0]//1.5), int(normal.size[1]//1.5)))
+		# color = color.resize((int(color.size[0]//1.5), int(color.size[1]//1.5)))
+		# normal = normal.resize((int(normal.size[0]//1.5), int(normal.size[1]//1.5)))
 
 		if self.transforms is not None:
 			color, normal = self.transforms(color, normal)
-		
+
+
+		norm_zero = torch.nonzero(torch.all(normal == 127, dim=0), as_tuple=True)
+		normal[:,norm_zero[0],norm_zero[1]] = 0
 		normal = normal.type(torch.float32)/255
 		norm = torch.linalg.vector_norm(normal, dim=0, keepdim=True)
 		norm_nonzero = torch.nonzero(norm, as_tuple=True)
-		normal[norm_nonzero] = normal[norm_nonzero] / norm[norm_nonzero]
+		normal[:,norm_nonzero[1],norm_nonzero[2]] = normal[:,norm_nonzero[1],norm_nonzero[2]] / norm[:,norm_nonzero[1],norm_nonzero[2]]
 		return color, normal

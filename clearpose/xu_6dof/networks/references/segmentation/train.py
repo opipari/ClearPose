@@ -56,25 +56,21 @@ def criterion(inputs, target):
     return losses["out"] + 0.5 * losses["aux"]
 
 
-def evaluate(model, data_loader, device, num_classes):
+def evaluate(model, data_loader, device):
     model.eval()
-    confmat = utils.ConfusionMatrix(num_classes)
-    metric_logger = utils.MetricLogger(delimiter="  ")
-    header = "Test:"
     with torch.inference_mode():
-        for image, target in metric_logger.log_every(data_loader, 100, header):
+        for image, target in data_loader:
             image, target = image.to(device), target.to(device)
             output = model(image)
-            output = output["out"]
 
-            confmat.update(target.flatten(), output.argmax(1).flatten())
+            fig, ax = plt.subplots(1,2)
+            ax[0].imshow((255*(output[0].permute(1,2,0)+1)/2).type(torch.uint8).cpu().detach())
+            ax[1].imshow((255*(target[0].permute(1,2,0)+1)/2).type(torch.uint8).cpu().detach())
+            plt.tight_layout()
+            plt.savefig('segment_normals.jpg', dpi=300)
+            plt.close(fig)
 
-        confmat.reduce_from_all_processes()
-
-    return confmat
-
-
-def train_one_epoch(model, criterion, optimizer, data_loader, lr_scheduler, device, epoch, print_freq, scaler=None):
+def train_one_epoch(model, criterion, optimizer, data_loader, device, epoch, print_freq, scaler=None):
     model.train()
     metric_logger = utils.MetricLogger(delimiter="  ")
     metric_logger.add_meter("lr", utils.SmoothedValue(window_size=1, fmt="{value}"))
@@ -85,7 +81,6 @@ def train_one_epoch(model, criterion, optimizer, data_loader, lr_scheduler, devi
         with torch.cuda.amp.autocast(enabled=scaler is not None):
             output = model(image)
             loss = criterion(output, target)
-
 
         optimizer.zero_grad()
         if scaler is not None:
@@ -101,11 +96,12 @@ def train_one_epoch(model, criterion, optimizer, data_loader, lr_scheduler, devi
         metric_logger.update(loss=loss.item(), lr=optimizer.param_groups[0]["lr"])
         i+=1
         
-
-    fig, ax = plt.subplots(1,2)
-    ax[0].imshow((255*(output[0].permute(1,2,0)+1)/2).type(torch.uint8).cpu().detach())
-    ax[1].imshow((255*(target[0].permute(1,2,0)+1)/2).type(torch.uint8).cpu().detach())
-    plt.savefig('segment_normals.jpg')
+        if i%1000==0:
+            fig, ax = plt.subplots(1,2)
+            ax[0].imshow((255*(output[0].permute(1,2,0)+1)/2).type(torch.uint8).cpu().detach())
+            ax[1].imshow((255*(target[0].permute(1,2,0)+1)/2).type(torch.uint8).cpu().detach())
+            plt.savefig('segment_normals.jpg')
+            plt.close(fig)
 
 def main(args):
     if args.prototype and prototype is None:

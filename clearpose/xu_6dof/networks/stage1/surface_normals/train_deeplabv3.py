@@ -1,4 +1,5 @@
 import os
+import random
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -25,7 +26,6 @@ class NormalCriterion(nn.Module):
 		norm_nonzero = torch.nonzero(norm, as_tuple=True)
 		output_nonzero = output[norm_nonzero[0],:,norm_nonzero[1],norm_nonzero[2]]
 		target_nonzero = target[norm_nonzero[0],:,norm_nonzero[1],norm_nonzero[2]]
-		
 		return torch.mean(1-self.cosine_similarity(output_nonzero, target_nonzero))
 
 
@@ -55,17 +55,13 @@ def main(save_dir=os.path.join("experiments","xu_6dof","stage1","surface_normals
 	device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 	# use our dataset and defined transformations
-	dataset = SurfaceNormalDataset(transforms=get_transform(train=True))
-	dataset_test = SurfaceNormalDataset(transforms=get_transform(train=False))
+	dataset = SurfaceNormalDataset(image_list="./data/train_images.csv", transforms=get_transform(train=True))
+	dataset_test = SurfaceNormalDataset(image_list="./data/test_images.csv", transforms=get_transform(train=False))
 
-	# split the dataset in train and test set
-	indices = torch.randperm(len(dataset)).tolist()
-	dataset = torch.utils.data.Subset(dataset, indices[:-50])
-	dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
 
 	# define training and validation data loaders
 	data_loader = torch.utils.data.DataLoader(
-		dataset, batch_size=2, drop_last=True, shuffle=True, num_workers=4)
+		dataset, batch_size=4, drop_last=True, shuffle=True, num_workers=4)
 
 	data_loader_test = torch.utils.data.DataLoader(
 		dataset_test, batch_size=1, shuffle=False, num_workers=4)
@@ -81,24 +77,33 @@ def main(save_dir=os.path.join("experiments","xu_6dof","stage1","surface_normals
 
 	# construct an optimizer
 	params = [p for p in model.parameters() if p.requires_grad]
-	optimizer = torch.optim.SGD(params, lr=0.005,
-								momentum=0.9, weight_decay=0.0005)
+	optimizer = torch.optim.Adam(params, lr=0.0001, weight_decay=0.0005)
 	# and a learning rate scheduler
-	lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-												   step_size=3,
-												   gamma=0.1)
-
+	# lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
+	# 											   step_size=3,
+	# 											   gamma=0.1)
+	
 	# let's train it for 10 epochs
-	num_epochs = 10
+	num_epochs = 100
 
-	torch.save(model.state_dict(), os.path.join(save_dir,"deeplabv3_0.pt"))
+	torch.save({'epoch': -1,
+				'model_state_dict': model.state_dict(),
+				'optimizer_state_dict': optimizer.state_dict()},
+				os.path.join(save_dir,"deeplabv3_0.pt"))
 	for epoch in range(num_epochs):
 		# train for one epoch, printing every 10 iterations
-		train_one_epoch(model, criterion, optimizer, data_loader, lr_scheduler, device, epoch, print_freq=100)
+		train_one_epoch(model, criterion, optimizer, data_loader, device, epoch, print_freq=100)
+
 		# update the learning rate
-		torch.save(model.state_dict(), os.path.join(save_dir,"deeplabv3_"+str(epoch)+".pt"))
-		lr_scheduler.step()
+		torch.save({'epoch': -1,
+					'model_state_dict': model.state_dict(),
+					'optimizer_state_dict': optimizer.state_dict()},
+					os.path.join(save_dir,"deeplabv3_"+str(epoch)+".pt"))
 
 
 if __name__=="__main__":
+	torch.manual_seed(0)
+	random.seed(0)
+	np.random.seed(0)
+
 	main()
