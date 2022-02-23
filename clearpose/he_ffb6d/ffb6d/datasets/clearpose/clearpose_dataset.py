@@ -255,7 +255,10 @@ class Dataset():
         np.random.shuffle(sf_idx)
         choose = choose[sf_idx]
 
+        ## to remove objects from YCB and Hope
         cls_id_lst = self.meta_data[scene_idx][set_idx][data_idx]['cls_indexes'][0][0].flatten().astype(np.uint32)
+        labels[labels > config.n_classes - 1] = 0
+        np.delete(cls_id_lst, np.where(cls_id_lst > config.n_classes - 1))
         for cls in cls_id_lst:
             if np.sum(labels == cls) <= config.mask_ignore:
                 np.delete(cls_id_lst, np.where(cls_id_lst == cls))
@@ -458,11 +461,11 @@ def main():
     global DEBUG
     DEBUG = True
     ds = {}
-    ds = Dataset('train', DEBUG=False)
+    ds = Dataset('test', DEBUG=False)
     while True:
         index = np.random.randint(0, len(ds))
-        ds.verify(index)
-        input("Press Enter to continue...")
+        ds.__getitem__(index)
+        # input("Press Enter to continue...")
 
 if __name__ == "__main__":
     main()

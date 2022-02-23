@@ -16,8 +16,8 @@ class ConfigRandLA:
     num_classes = 22  # Number of valid classes
     sub_grid_size = 0.06  # preprocess_parameter
 
-    batch_size = 3  # batch_size during training
-    val_batch_size = 3  # batch_size during validation and test
+    batch_size = 4  # batch_size during training
+    val_batch_size = 4  # batch_size during validation and test
     train_steps = 500  # Number of steps per epochs
     val_steps = 100  # Number of validation steps per epoch
     in_c = 9
@@ -56,9 +56,9 @@ class Config:
         ensure_fd(self.log_traininfo_dir)
 
         self.n_total_epoch = 20
-        self.mini_batch_size = 6
-        self.val_mini_batch_size = 2
-        self.test_mini_batch_size = 2
+        self.mini_batch_size = 4
+        self.val_mini_batch_size = 4
+        self.test_mini_batch_size = 4
 
         self.n_sample_points = 480 * 640 // 24  # Number of input points
         self.n_keypoints = 8
@@ -193,7 +193,7 @@ class Config:
             }
 
             self.train_ratio = 1.0
-            self.test_ratio = 1.0
+            self.test_ratio = 0.01
 
             ## train could be ["GT", "raw", "depthcomplete"]
             self.depth_train = "GT"
