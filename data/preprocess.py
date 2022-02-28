@@ -6,7 +6,7 @@ def main():
 	train_summary_file = open('./data/train_images.csv', 'w')
 	train_sets = ['set1','set4','set5','set6','set7']
 
-	root = "/media/logan/6358C6357FEBD1E6/"
+	root = "/media/yuzeren/216F2E9C45E9E56E"
 	sets = [sett for sett in os.listdir(root) if sett.startswith('set')]
 	sets = [sett for sett in sets if sett in train_sets]
 	img_id = 0
@@ -45,7 +45,7 @@ def main():
 	test_summary_file = open('./data/test_images.csv', 'w')
 
 
-	root = "/media/logan/6358C6357FEBD1E6/"
+	root = "/media/yuzeren/216F2E9C45E9E56E"
 	sets = [sett for sett in os.listdir(root) if sett.startswith('set')]
 
 	img_id = 0
