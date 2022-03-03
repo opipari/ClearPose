@@ -165,6 +165,8 @@ class Basic_Utils():
         self.config = config
         if config.dataset_name == "ycb":
             self.ycb_cls_lst = config.ycb_cls_lst
+        if config.dataset_name == "clearpose":
+            self.clearpose_cls_lst = {v:k for (k, v) in config.clearpose_obj_dict.items() }
         self.ycb_cls_ptsxyz_dict = {}
         self.ycb_cls_ptsxyz_cuda_dict = {}
         self.ycb_cls_kps_dict = {}
@@ -508,6 +510,8 @@ class Basic_Utils():
         if type(cls) is int:
             if ds_type == 'ycb':
                 cls = self.ycb_cls_lst[cls - 1]
+            if ds_type == 'clearpose':
+                cls = self.clearpose_cls_lst[cls]
             else:
                 cls = self.lm_cls_lst[cls - 1]
         return cls
@@ -528,12 +532,12 @@ class Basic_Utils():
     def get_pointxyz(
         self, cls, ds_type='ycb'
     ):
-        if ds_type == "ycb":
+        if ds_type == "ycb" or ds_type == "clearpose":
             cls = self.get_cls_name(cls, ds_type)
             if cls in self.ycb_cls_ptsxyz_dict.keys():
                 return self.ycb_cls_ptsxyz_dict[cls]
             ptxyz_ptn = os.path.join(
-                self.config.ycb_root, 'models',
+                self.config.clearpose_root, 'model',
                 '{}/points.xyz'.format(cls),
             )
             pointxyz = np.loadtxt(ptxyz_ptn.format(cls), dtype=np.float32)

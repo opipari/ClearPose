@@ -73,6 +73,27 @@ def of_l1_loss(
 
     return in_loss
 
+def of_symmetric_l1_loss(
+        pred_ofsts, kp_targ_ofst, labels, permutation, sigma=1.0
+):
+    '''
+    :param pred_ofsts:      [bs, n_kpts, n_pts, c]
+    :param kp_targ_ofst:    [bs, n_pts, n_kpts, c]
+    :param labels:          [bs, n_pts, 1]
+    '''
+    w = (labels > 1e-8).float()
+    bs, n_kpts, n_pts, c = pred_ofsts.size()
+    sigma_2 = sigma ** 3
+    w = w.view(bs,1, 1, n_pts, 1).repeat(1, len(permutation), n_kpts, 1, 1).contiguous()
+    kp_targ_ofst = kp_targ_ofst.view(bs, n_pts, n_kpts, c)
+    kp_targ_ofst = kp_targ_ofst.permute(0, 2, 1, 3).contiguous()
+    diff = pred_ofsts[:, None, :] - kp_targ_ofst[:, permutation,:, :]
+    abs_diff = torch.abs(diff)
+    abs_diff = w * abs_diff
+    in_loss = abs_diff
+    in_loss = torch.sum(in_loss.view(bs, len(permutation), n_kpts, -1), 3) 
+    in_loss, _ = torch.min(in_loss, 1)
+    return in_loss
 
 class OFLoss(_Loss):
     def __init__(self):
@@ -86,6 +107,42 @@ class OFLoss(_Loss):
             pred_ofsts, kp_targ_ofst, labels,
             sigma=1.0, normalize=True, reduce=False
         )
+
+        return l1_loss
+
+class OFLoss_symmetry(_Loss):
+    def __init__(self):
+        super(OFLoss_symmetry, self).__init__(True)
+
+    def forward(
+        self, pred_ofsts, kp_targ_ofst, labels, model_config, cls_idx,
+        normalize=True, reduce=False
+    ):
+        # l1_loss = of_l1_loss(
+        #     pred_ofsts, kp_targ_ofst, labels,
+        #     sigma=1.0, normalize=True, reduce=False
+        # )
+        l1_loss = torch.zeros(pred_ofsts.shape[0], pred_ofsts.shape[1]).to("cuda:0")
+
+        permutation_obj_list = [18, 26, 27, 28, 29, 30]
+        
+        for label in permutation_obj_list:
+            permutation = model_config[label]['equ_feature']
+
+            l1_loss += of_symmetric_l1_loss(
+                pred_ofsts, kp_targ_ofst, labels == label, permutation, sigma=1.0
+            )
+        normal_loss = of_l1_loss(
+                pred_ofsts, kp_targ_ofst, 
+                (labels != 18) & (labels != 26) & (labels != 27) & (labels != 28) & (labels != 29) & (labels != 30) & (labels != 0), 
+                sigma=1.0, normalize=False, reduce=False
+        )
+        bs, n_kpts, n_pts, c = pred_ofsts.size()
+        l1_loss += torch.sum(normal_loss.view(bs, n_kpts, -1), 2) 
+        w = (labels > 1e-8).float()
+        w = w.view(bs, 1, n_pts, 1).repeat(1, n_kpts, 1, 1).contiguous()
+        l1_loss = l1_loss/(torch.sum(w.view(bs, n_kpts, -1), 2) + 1e-3)
+
 
         return l1_loss
 

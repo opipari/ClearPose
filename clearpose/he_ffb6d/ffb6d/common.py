@@ -56,9 +56,9 @@ class Config:
         ensure_fd(self.log_traininfo_dir)
 
         self.n_total_epoch = 20
-        self.mini_batch_size = 4
-        self.val_mini_batch_size = 4
-        self.test_mini_batch_size = 4
+        self.mini_batch_size = 6
+        self.val_mini_batch_size = 6
+        self.test_mini_batch_size = 6
 
         self.n_sample_points = 480 * 640 // 24  # Number of input points
         self.n_keypoints = 8
@@ -168,6 +168,9 @@ class Config:
             "wine_cup_8": 62,
             "wine_cup_9": 63
             }
+            self.clearpose_normal_cls = [1, 6, 7, 12, 14, 31, 32, 33, 34, 35, 36, 39, 40]
+
+            self.clearpose_sym_cls_ids = [i for i in range(1, 64) if i not in self.clearpose_normal_cls]
             self.train_list = {
                 "set1": [1, 2, 3, 4],
                 "set4": [1, 2, 3, 4, 5],
@@ -179,8 +182,6 @@ class Config:
             #     "set1": [1],
             # }
 
-
-
             self.test_list = {
                 "set1": [5],
                 "set2": [1, 3, 4, 5, 6],
@@ -191,15 +192,22 @@ class Config:
                 "set7": [6],
                 "set8": [1, 2, 3, 4, 5, 6]          
             }
+            # self.test_list = {
+            #     "set1": [1, 2, 3, 4],
+            #     "set4": [1, 2, 3, 4, 5],
+            #     "set5": [1, 2, 3, 4, 5],
+            #     "set6": [1, 2, 3, 4, 5],
+            #     "set7": [1, 2, 3, 4, 5]
+            # }
 
             self.train_ratio = 1.0
             self.test_ratio = 0.01
 
             ## train could be ["GT", "raw", "depthcomplete"]
-            self.depth_train = "GT"
-            self.depth_test = "GT"
+            self.depth_train = "raw"
+            self.depth_test = "raw"
 
-            self.mask_ignore = 500
+            self.mask_ignore = 0
 
         self.intrinsic_matrix = {
             'linemod': np.array([[572.4114, 0.,         325.2611],

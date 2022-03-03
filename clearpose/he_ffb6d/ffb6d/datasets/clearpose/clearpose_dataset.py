@@ -392,7 +392,7 @@ class Dataset():
 
                 ctr = np.array(self.model_config[cls_id]['center'])
                 ctr = np.dot(ctr.T, r.T) + t[:, 0]
-                ctr3ds[i, :] = ctr[0]
+                ctr3ds[i, :] = ctr
                 msk_idx = np.where(labels == cls_id)[0]
 
                 target_offset = np.array(np.add(cld, -1.0*ctr3ds[i, :]))

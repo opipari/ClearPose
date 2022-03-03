@@ -32,7 +32,7 @@ from utils.basic_utils import Basic_Utils
 
 import models.pytorch_utils as pt_utils
 from models.ffb6d import FFB6D
-from models.loss import OFLoss, FocalLoss
+from models.loss import OFLoss, FocalLoss, OFLoss_symmetry
 
 from apex.parallel import DistributedDataParallel
 from apex.parallel import convert_syncbn_model
@@ -205,7 +205,7 @@ def view_labels(rgb_chw, cld_cn, labels, K=config.intrinsic_matrix['ycb_K1']):
 
 
 def model_fn_decorator(
-    criterion, criterion_of, test=False,
+    criterion, criterion_of, criterion_of_symmetric, model_config, test=False, 
 ):
     teval = TorchEval()
 
@@ -237,8 +237,8 @@ def model_fn_decorator(
             loss_rgbd_seg = criterion(
                 end_points['pred_rgbd_segs'], labels.view(-1)
             ).sum()
-            loss_kp_of = criterion_of(
-                end_points['pred_kp_ofs'], cu_dt['kp_targ_ofst'], labels
+            loss_kp_of = criterion_of_symmetric(
+                end_points['pred_kp_ofs'], cu_dt['kp_targ_ofst'], labels, model_config, cu_dt['cls_ids']
             ).sum()
             loss_ctr_of = criterion_of(
                 end_points['pred_ctr_ofs'], cu_dt['ctr_targ_ofst'], labels
@@ -274,8 +274,16 @@ def model_fn_decorator(
 
                 if not args.test_gt:
                     # eval pose from point cloud prediction.
+                    # teval.eval_pose_parallel(
+                    #     cld, cu_dt['rgb'], cls_rgbd, end_points['pred_ctr_ofs'],
+                    #     cu_dt['ctr_targ_ofst'], labels, epoch, cu_dt['cls_ids'],
+                    #     cu_dt['RTs'], end_points['pred_kp_ofs'],
+                    #     cu_dt['kp_3ds'], cu_dt['ctr_3ds'], min_cnt=1,
+                    #     use_ctr_clus_flter=True, use_ctr=True, ds='ycb'
+                    # )
+                    gt_ctr_ofs = cu_dt['ctr_targ_ofst'].unsqueeze(2).permute(0, 2, 1, 3)
                     teval.eval_pose_parallel(
-                        cld, cu_dt['rgb'], cls_rgbd, end_points['pred_ctr_ofs'],
+                        cld, cu_dt['rgb'], cls_rgbd, gt_ctr_ofs,
                         cu_dt['ctr_targ_ofst'], labels, epoch, cu_dt['cls_ids'],
                         cu_dt['RTs'], end_points['pred_kp_ofs'],
                         cu_dt['kp_3ds'], cu_dt['ctr_3ds'], min_cnt=1,
@@ -544,7 +552,7 @@ def train():
         init_method='env://',
     )
     torch.manual_seed(0)
-
+    model_config = {}
     if not args.eval_net:
         train_ds = dataset_desc.Dataset('train')
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_ds)
@@ -552,7 +560,7 @@ def train():
             train_ds, batch_size=config.mini_batch_size, shuffle=False,
             drop_last=True, num_workers=4, sampler=train_sampler, pin_memory=True
         )
-
+        model_config = train_ds.model_config
         val_ds = dataset_desc.Dataset('test')
         val_sampler = torch.utils.data.distributed.DistributedSampler(val_ds)
         val_loader = torch.utils.data.DataLoader(
@@ -561,6 +569,7 @@ def train():
         )
     else:
         test_ds = dataset_desc.Dataset('test')
+        model_config = test_ds.model_config
         test_loader = torch.utils.data.DataLoader(
             test_ds, batch_size=config.test_mini_batch_size, shuffle=False,
             num_workers=20
@@ -626,12 +635,12 @@ def train():
 
     if args.eval_net:
         model_fn = model_fn_decorator(
-            FocalLoss(gamma=2), OFLoss(),
+            FocalLoss(gamma=2), OFLoss(), OFLoss_symmetry(), model_config,
             args.test,
         )
     else:
         model_fn = model_fn_decorator(
-            FocalLoss(gamma=2).to(device), OFLoss().to(device),
+            FocalLoss(gamma=2).to(device), OFLoss().to(device), OFLoss_symmetry(), model_config,
             args.test,
         )
 

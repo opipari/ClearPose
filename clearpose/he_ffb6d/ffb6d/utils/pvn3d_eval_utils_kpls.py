@@ -13,12 +13,14 @@ try:
     from neupeak.utils.webcv2 import imshow, waitKey
 except Exception:
     from cv2 import imshow, waitKey
-
+import datasets.clearpose.clearpose_dataset as dataset_desc
 
 # config = Config(ds_name='ycb')
 config = Config(ds_name='clearpose')
 bs_utils = Basic_Utils(config)
 cls_lst = config.clearpose_obj_dict
+ds = dataset_desc.Dataset('test')
+
 try:
     config_lm = Config(ds_name="linemod")
     bs_utils_lm = Basic_Utils(config_lm)
@@ -148,9 +150,14 @@ def cal_frame_poses(
 
         # Get mesh keypoint & center point in the object coordinate system.
         # If you use your own objects, check that you load them correctly.
-        mesh_kps = bs_utils.get_kps(cls_lst[cls_id-1], kp_type=kp_type)
+        cls_lst_inv = {v : k for k, v in cls_lst.items()}
+
+        # mesh_kps = bs_utils.get_kps(cls_lst_inv[cls_id-1], kp_type=kp_type, ds_type='clearpose')
+        mesh_kps = np.array(ds.model_config[cls_id]['keypoints'])
         if use_ctr:
-            mesh_ctr = bs_utils.get_ctr(cls_lst[cls_id-1]).reshape(1, 3)
+            # mesh_ctr = bs_utils.get_ctr(cls_lst[cls_id-1]).reshape(1, 3)
+            # mesh_kps = np.concatenate((mesh_kps, mesh_ctr), axis=0)
+            mesh_ctr = np.array([ds.model_config[cls_id]['center']])     
             mesh_kps = np.concatenate((mesh_kps, mesh_ctr), axis=0)
         pred_kpc = cls_kps[cls_id].squeeze().contiguous().cpu().numpy()
         pred_RT = best_fit_transform(mesh_kps, pred_kpc)
@@ -180,12 +187,13 @@ def eval_metric(
             pred_kp = np.zeros(gt_kp.shape)
         else:
             pred_RT = pred_pose_lst[cls_idx[0]]
-            pred_kp = pred_kpc_lst[cls_idx[0]][:-1, :]
+            pred_kp = pred_kpc_lst[cls_idx[0]][:gt_kp.shape[0], :]
             pred_RT = torch.from_numpy(pred_RT.astype(np.float32)).cuda()
         kp_err = np.linalg.norm(gt_kp-pred_kp, axis=1).mean()
         cls_kp_err[cls_id].append(kp_err)
         gt_RT = RTs[icls]
-        mesh_pts = bs_utils.get_pointxyz_cuda(cls_lst[cls_id-1]).clone()
+        cls_lst_inv = {v : k for k, v in cls_lst.items()}
+        mesh_pts = bs_utils.get_pointxyz_cuda(cls_lst_inv[cls_id.to('cpu').item()]).clone()
         add = bs_utils.cal_add_cuda(pred_RT, gt_RT, mesh_pts)
         adds = bs_utils.cal_adds_cuda(pred_RT, gt_RT, mesh_pts)
         cls_add_dis[cls_id].append(add.item())
@@ -327,8 +335,9 @@ def eval_one_frame_pose_lm(
 class TorchEval():
 
     def __init__(self):
-        n_cls = 22
-        self.n_cls = 22
+        ## for clear pose
+        n_cls = 64
+        self.n_cls = 64
         self.cls_add_dis = [list() for i in range(n_cls)]
         self.cls_adds_dis = [list() for i in range(n_cls)]
         self.cls_add_s_dis = [list() for i in range(n_cls)]
@@ -341,7 +350,7 @@ class TorchEval():
         adds_auc_lst = []
         add_s_auc_lst = []
         for cls_id in range(1, self.n_cls):
-            if (cls_id) in config.ycb_sym_cls_ids:
+            if (cls_id) in config.clearpose_sym_cls_ids:
                 self.cls_add_s_dis[cls_id] = self.cls_adds_dis[cls_id]
             else:
                 self.cls_add_s_dis[cls_id] = self.cls_add_dis[cls_id]
@@ -355,7 +364,8 @@ class TorchEval():
             add_s_auc_lst.append(add_s_auc)
             if i == 0:
                 continue
-            print(cls_lst[i-1])
+            cls_lst_inv = {v : k for k, v in cls_lst.items()}
+            print(cls_lst_inv[i])
             print("***************add:\t", add_auc)
             print("***************adds:\t", adds_auc)
             print("***************add(-s):\t", add_s_auc)

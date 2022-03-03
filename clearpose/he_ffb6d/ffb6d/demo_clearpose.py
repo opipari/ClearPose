@@ -15,15 +15,17 @@ import torch.nn as nn
 import numpy as np
 import pickle as pkl
 from common import Config, ConfigRandLA
+from datasets.clearpose.clearpose_dataset import Dataset as Clearpose_Dataset
 from models.ffb6d import FFB6D
-from datasets.ycb.ycb_dataset import Dataset as YCB_Dataset
-from datasets.linemod.linemod_dataset import Dataset as LM_Dataset
+# from datasets.ycb.ycb_dataset import Dataset as YCB_Dataset
+# from datasets.linemod.linemod_dataset import Dataset as LM_Dataset
 from utils.pvn3d_eval_utils_kpls import cal_frame_poses, cal_frame_poses_lm
 from utils.basic_utils import Basic_Utils
 try:
     from neupeak.utils.webcv2 import imshow, waitKey
 except ImportError:
     from cv2 import imshow, waitKey
+import colorsys
 
 
 parser = argparse.ArgumentParser(description="Arg parser")
@@ -44,7 +46,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-if args.dataset == "ycb":
+if args.dataset == "ycb" or args.dataset == "clearpose":
     config = Config(ds_name=args.dataset)
 else:
     config = Config(ds_name=args.dataset, cls_type=args.cls)
@@ -100,7 +102,7 @@ def cal_view_pred_pose(model, data, epoch=0, obj_id=-1):
         _, classes_rgbd = torch.max(end_points['pred_rgbd_segs'], 1)
 
         pcld = cu_dt['cld_rgb_nrm'][:, :3, :].permute(0, 2, 1).contiguous()
-        if args.dataset == "ycb":
+        if args.dataset == "ycb" or args.dataset == "clearpose":
             pred_cls_ids, pred_pose_lst, _ = cal_frame_poses(
                 pcld[0], classes_rgbd[0], end_points['pred_ctr_ofs'][0],
                 end_points['pred_kp_ofs'][0], True, config.n_objects, True,
@@ -122,17 +124,20 @@ def cal_view_pred_pose(model, data, epoch=0, obj_id=-1):
             if len(idx) == 0:
                 continue
             pose = pred_pose_lst[idx[0]]
-            if args.dataset == "ycb":
-                obj_id = int(cls_id[0])
+            obj_id = int(cls_id[0])
             mesh_pts = bs_utils.get_pointxyz(obj_id, ds_type=args.dataset).copy()
             mesh_pts = np.dot(mesh_pts, pose[:, :3].T) + pose[:, 3]
             # if args.dataset == "ycb":
             #     K = config.intrinsic_matrix["ycb_K1"]
             # else:
             #     K = config.intrinsic_matrix["linemod"]
-            K = np.squeeze(data['K'])
+            K = np.squeeze(data['K'][0])
             mesh_p2ds = bs_utils.project_p3d(mesh_pts, 1.0, K)
-            color = bs_utils.get_label_color(obj_id, n_obj=22, mode=2)
+
+            N = 64
+            HSV_tuples = [(x*1.0/N, 0.5, 0.5) for x in range(N)]
+            RGB_tuples = [tuple((np.array(colorsys.hsv_to_rgb(*x))*255).astype(np.uint8).tolist()) for x in HSV_tuples]
+            color = RGB_tuples[obj_id]
             np_rgb = bs_utils.draw_p2ds(np_rgb, mesh_p2ds, color=color)
         vis_dir = os.path.join(config.log_eval_dir, "pose_vis")
         ensure_fd(vis_dir)
@@ -152,12 +157,13 @@ def cal_view_pred_pose(model, data, epoch=0, obj_id=-1):
         print("\n\nResults saved in {}".format(vis_dir))
 
 def main():
-    if args.dataset == "ycb":
-        test_ds = YCB_Dataset('test')
-        obj_id = -1
-    else:
-        test_ds = LM_Dataset('test', cls_type=args.cls)
-        obj_id = config.lm_obj_dict[args.cls]
+    # if args.dataset == "ycb":
+    #     test_ds = YCB_Dataset('test')
+    #     obj_id = -1
+    # else:
+    #     test_ds = LM_Dataset('test', cls_type=args.cls)
+    #     obj_id = config.lm_obj_dict[args.cls]
+    test_ds = Clearpose_Dataset('test')
     test_loader = torch.utils.data.DataLoader(
         test_ds, batch_size=config.test_mini_batch_size, shuffle=False,
         num_workers=20
@@ -179,7 +185,7 @@ def main():
     for i, data in tqdm.tqdm(
         enumerate(test_loader), leave=False, desc="val"
     ):
-        cal_view_pred_pose(model, data, epoch=i, obj_id=obj_id)
+        cal_view_pred_pose(model, data, epoch=i, obj_id=-1)
 
 
 if __name__ == "__main__":
