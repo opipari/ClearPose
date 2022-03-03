@@ -30,9 +30,11 @@ __pycache__
 */*/*/__pycache__
 */*/*/*/__pycache__
 ****/*.so
-ffb6d/datasets/ycb/YCB_Video_Dataset
-ffb6d/datasets/linemod/Linemod_preprocessed
-ffb6d/datasets/ycb/YCB_Video_Dataset
-ffb6d/datasets/clearpose/dataset
-apex/
-normalSpeed/
+clearpose/he_ffb6d/ffb6d/datasets/ycb/YCB_Video_Dataset
+clearpose/he_ffb6d/ffb6d/datasets/linemod/Linemod_preprocessed
+clearpose/he_ffb6d/ffb6d/datasets/ycb/YCB_Video_Dataset
+clearpose/he_ffb6d/ffb6d/datasets/clearpose/dataset
+clearpose/he_ffb6d/apex/
+clearpose/he_ffb6d/normalSpeed/
+experiments/he_ffb6d/models/
+experiments/he_ffb6d/train_log/
