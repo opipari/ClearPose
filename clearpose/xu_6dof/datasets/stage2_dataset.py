@@ -30,9 +30,12 @@ class Stage2Dataset(Dataset):
 
 		self.transforms = transforms
 
-		self.intrinsic = np.array([[902.187744140625, 0.0, 662.3499755859375],
-						  [0.0, 902.391357421875, 372.2278747558594], 
-						  [0.0, 0.0, 1.0]])
+		self.intrinsic = np.array([[601.33333333, 0., 334.66666667],
+							       [0., 601.33333333, 248.],
+							       [0., 0.,   1.]])
+		# np.array([[902.187744140625, 0.0, 662.3499755859375],
+		# 				  [0.0, 902.391357421875, 372.2278747558594], 
+		# 				  [0.0, 0.0, 1.0]])
 
 
 		
@@ -58,9 +61,13 @@ class Stage2Dataset(Dataset):
 		return self.object_counts[-1]
 
 
-	def __getitem__(self, idx):
+	def __getitem__(self, idx, r=True):
+		img_idx=100000
+		idx = np.random.randint(self.object_counts[img_idx-1],self.object_counts[img_idx])
+		idx=self.object_counts[img_idx-1]
 		img_idx = np.argmax(idx<self.object_counts)
-		_, scene_path, imgid, _ = self.image_list[img_idx]
+		assert img_idx==100000, "failed on {}".format(img_idx)
+		_, scene_path, imgid, _ =  self.image_list[img_idx]
 
 		idx_offset = idx
 		if img_idx>0:
@@ -71,22 +78,24 @@ class Stage2Dataset(Dataset):
 		normal_path = os.path.join(scene_path, imgid+'-normal_true.png')
 		plane_path = os.path.join(scene_path, imgid+'-tableplane_depth.png')
 		depth_path = os.path.join(scene_path, imgid+'-depth_true.png')
-		meta_path = os.path.join(scene_path, imgid+'-meta.mat')
+		meta_path = os.path.join(scene_path, 'metadata.mat')
 
 		color = Image.open(color_path).convert("RGB")
 		mask = Image.open(mask_path)
 		normal = Image.open(normal_path)
 		plane = np.array(Image.open(plane_path))
 		depth = np.array(Image.open(depth_path))
-		meta = loadmat(meta_path)
+		meta = loadmat(meta_path)[imgid][0,0]
 		
-		depth = Image.fromarray(depth/meta['factor_depth'].item())
-		plane = Image.fromarray(plane/meta['factor_depth'].item())
+		factor_depth = meta[2]
+		depth = Image.fromarray(depth/factor_depth.item())
+		plane = Image.fromarray(plane/factor_depth.item())
 
 		mask = np.array(mask)
-		obj_ids = meta['cls_indexes'].flatten()
+		cls_indexes = meta[0]
+		obj_ids = cls_indexes.flatten()
 		masks = (mask == obj_ids[:, None, None])[idx_offset]
-		obj_ids = obj_ids[idx_offset]
+		obj_ids = obj_ids[idx_offset]-1
 
 		pos = np.where(masks)
 		xmin = np.min(pos[1])
@@ -128,7 +137,8 @@ class Stage2Dataset(Dataset):
 		crops_masks = roi_align(masks.unsqueeze(0).unsqueeze(0).type(torch.float32), [target['boxes']], (80,80), 1, 1)
 		crops_geometry_per_image = torch.cat([crops_normal, crops_plane, crops_uvz], dim=1)
 
-		poses = np.transpose(meta['poses'], (2,0,1))
+		poses = meta[4]
+		poses = np.transpose(poses, (2,0,1))
 		target["poses"] = torch.from_numpy(poses)[idx_offset].unsqueeze(0)
 		target["quats"] = torch.stack([torch.from_numpy(R.from_matrix(rmat[:, :3]).as_quat()) for rmat in poses])[:,[3,0,1,2]][idx_offset].unsqueeze(0)
 		target["trans_gt"] = torch.stack([torch.from_numpy(rmat[:, 3]) for rmat in poses])[idx_offset].unsqueeze(0)
@@ -144,7 +154,8 @@ class Stage2Dataset(Dataset):
 
 		target["mesh"] = mesh_pre_rot[:,mesh_samples]
 		target["mesh_rot"] = mesh_post_rot[:,mesh_samples]
-		target["diameter"] = self.diameters[obj_ids-1]
+		target["diameter"] = self.diameters[obj_ids]
+		target["symmetric"] = self.object_list[obj_ids][2]!='normal'
 
 		return color, crops_color, crops_geometry_per_image, crops_masks, target
 
