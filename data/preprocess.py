@@ -6,8 +6,8 @@ def main():
 	train_summary_file = open('./data/train_images.csv', 'w')
 	train_sets = ['set1','set4','set5','set6','set7']
 
-	root = "/media/mytre/6358C6357FEBD1E6/"
-	sets = [sett for sett in sorted(os.listdir(root)) if sett.startswith('set')]
+	root = "/media/logan/1E10C4A130358D19/clearpose/"
+	sets = [sett for sett in sorted(os.listdir(root)) if sett.startswith('set') and not sett.endswith('.gz')]
 	sets = [sett for sett in sets if sett in train_sets]
 	img_id = 0
 	for sett in sets:
@@ -31,6 +31,7 @@ def main():
 
 				obj_ids, _, depth_factor, cam_pose, obj_poses, _, obj_boxes = meta[intid][0][0]
 				obj_ids = obj_ids.flatten()
+				obj_ids = obj_ids[obj_ids<200]
 				num_objs = len(obj_ids)
 
 				train_summary_file.write("{},{},{},{}\n".format(img_id, root_set_scene, intid, num_objs))
@@ -43,7 +44,7 @@ def main():
 	test_summary_file = open('./data/test_images.csv', 'w')
 	val_summary_file = open('./data/val_images.csv', 'w')
 
-	sets = [sett for sett in sorted(os.listdir(root)) if sett.startswith('set')]
+	sets = [sett for sett in sorted(os.listdir(root)) if sett.startswith('set') and not sett.endswith('.gz')]
 
 	img_id = 0
 	for sett in sets:
@@ -72,6 +73,7 @@ def main():
 
 				obj_ids, _, depth_factor, cam_pose, obj_poses, _, obj_boxes = meta[intid][0][0]
 				obj_ids = obj_ids.flatten()
+				obj_ids = obj_ids[obj_ids<200]
 				num_objs = len(obj_ids)
 
 				if img_id%100==0:

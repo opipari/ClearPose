@@ -62,11 +62,7 @@ class Stage2Dataset(Dataset):
 
 
 	def __getitem__(self, idx, r=True):
-		img_idx=100000
-		idx = np.random.randint(self.object_counts[img_idx-1],self.object_counts[img_idx])
-		idx=self.object_counts[img_idx-1]
 		img_idx = np.argmax(idx<self.object_counts)
-		assert img_idx==100000, "failed on {}".format(img_idx)
 		_, scene_path, imgid, _ =  self.image_list[img_idx]
 
 		idx_offset = idx
@@ -94,6 +90,8 @@ class Stage2Dataset(Dataset):
 		mask = np.array(mask)
 		cls_indexes = meta[0]
 		obj_ids = cls_indexes.flatten()
+		ign_ids = obj_ids<200
+		obj_ids = obj_ids[ign_ids]
 		masks = (mask == obj_ids[:, None, None])[idx_offset]
 		obj_ids = obj_ids[idx_offset]-1
 
@@ -120,14 +118,14 @@ class Stage2Dataset(Dataset):
 		if self.transforms is not None:
 			(color,normal,plane,depth), target = self.transforms((color,normal,plane,depth), target)
 
-		H, W = depth.shape[1:]
+		H, W = plane.shape[1:]
 		U, V = np.tile(np.arange(W), (H, 1)), np.tile(np.arange(H), (W, 1)).T
 		fx, fy, cx, cy = self.intrinsic[0, 0], self.intrinsic[1, 1], self.intrinsic[0, 2], self.intrinsic[1, 2]
-		X, Y = depth * (U - cx) / fx, depth * (V - cy) / fy
+		X, Y = plane * (U - cx) / fx, plane * (V - cy) / fy
 		
 		X = F.convert_image_dtype(X)
 		Y = F.convert_image_dtype(Y)
-		Z = F.convert_image_dtype(depth)
+		Z = F.convert_image_dtype(plane)
 		uvz = torch.stack([X,Y,Z]).squeeze(1)
 
 		crops_color = roi_align(color.unsqueeze(0), [target['boxes']], (80,80), 1, 1)
@@ -138,14 +136,16 @@ class Stage2Dataset(Dataset):
 		crops_geometry_per_image = torch.cat([crops_normal, crops_plane, crops_uvz], dim=1)
 
 		poses = meta[4]
-		poses = np.transpose(poses, (2,0,1))
+		poses = np.transpose(poses, (2,0,1))[ign_ids]
+		#print(torch.from_numpy(poses).shape, torch.from_numpy(poses)[ign_ids].shape)
 		target["poses"] = torch.from_numpy(poses)[idx_offset].unsqueeze(0)
 		target["quats"] = torch.stack([torch.from_numpy(R.from_matrix(rmat[:, :3]).as_quat()) for rmat in poses])[:,[3,0,1,2]][idx_offset].unsqueeze(0)
 		target["trans_gt"] = torch.stack([torch.from_numpy(rmat[:, 3]) for rmat in poses])[idx_offset].unsqueeze(0)
 		target["trans"] = target["trans_gt"].view(1,3,1,1) - crops_uvz
 		target["trans"] = target["trans"] / torch.linalg.vector_norm(target["trans"], dim=1, keepdim=True)
 
-		mesh = self.meshes[list(target['labels']-1)].clone()
+		#print(len(self.meshes), list(target['labels']), cls_indexes, self.image_list[img_idx])
+		mesh = self.meshes[list(target['labels'])].clone()
 		mesh_pre_rot = mesh.verts_padded()
 		mesh = mesh.update_padded(quaternion_apply(target['quats'].unsqueeze(1).type(torch.float32), mesh.verts_padded()))
 		mesh_post_rot = mesh.verts_padded()

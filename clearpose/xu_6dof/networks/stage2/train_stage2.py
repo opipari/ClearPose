@@ -160,7 +160,7 @@ def train_one_epoch(model, criterion, optimizer, data_loader, device, epoch, pri
 
 		metric_logger.update(loss=loss.item(), lr=optimizer.param_groups[0]["lr"], loss_r=loss_r, loss_reg=loss_reg, loss_t=loss_t)
 		
-		if i>200:
+		if i>20000:
 			break
 		i+=1
 
@@ -195,7 +195,7 @@ def test_quant(model, criterion, optimizer, data_loader, device, print_freq, log
 		
 		how_min, which_min = torch.min(pred_c, 1)
 		points = geom_crops[:,:,:,4:].flatten(start_dim=1, end_dim=2)[choose].view(geom_crops.shape[0], model.N, 3)
-		pred_t, pred_mask = ransac_voting_layer(points, pred_t)
+		pred_t, pred_mask = ransac_voting_layer(points, pred_t, inlier_thresh=-100000)
 		
 		
 		pred_t = pred_t.cpu().data.numpy()
@@ -215,7 +215,7 @@ def test_quant(model, criterion, optimizer, data_loader, device, print_freq, log
 
 		
 		metric_logger.update(loss=loss.item(), loss_r=loss_r, loss_reg=loss_reg, loss_t=loss_t)
-		if b>100:
+		if b>200:
 			break
 		b+=1
 
@@ -231,7 +231,7 @@ def test_qual(model, criterion, optimizer, dataset, device, print_freq, save_dir
 	header = f"Test"
 
 	with torch.no_grad():
-		i = 100000#np.random.randint(len(dataset.object_counts))
+		i = 0#np.random.randint(len(dataset.object_counts))
 		start_idx = dataset.object_counts[i-1] if (i>0) else 0
 		data = utils.collate_fn([dataset[idx] for idx in range(start_idx, dataset.object_counts[i])])
 		color, color_crops, geom_crops, masks_crops, targets = data
@@ -256,7 +256,7 @@ def test_qual(model, criterion, optimizer, dataset, device, print_freq, save_dir
 
 		how_min, which_min = torch.min(pred_c, 1)
 		points = geom_crops[:,:,:,4:].flatten(start_dim=1, end_dim=2)[choose].view(geom_crops.shape[0], model.N, 3)
-		pred_t, pred_mask = ransac_voting_layer(points, pred_t)
+		pred_t, pred_mask = ransac_voting_layer(points, pred_t, inlier_thresh=-100000)
 
 		# print("True Trans:", target_trans_gt)
 		# print("Estimated Trans:", pred_t)
@@ -372,7 +372,7 @@ def main(save_dir=os.path.join("experiments","xu_6dof","stage2","models")):
 
 	# use our dataset and defined transformations
 	dataset = Stage2Dataset(image_list="./data/train_images.csv", transforms=get_transform(train=True))
-	dataset_test = Stage2Dataset(image_list="./data/train_images.csv", transforms=get_transform(train=False))
+	dataset_test = Stage2Dataset(image_list="./data/val_images.csv", transforms=get_transform(train=False))
 
 	# define training and validation data loaders
 	data_loader = torch.utils.data.DataLoader(
@@ -395,24 +395,23 @@ def main(save_dir=os.path.join("experiments","xu_6dof","stage2","models")):
 
 	# construct an optimizer
 	params = [p for p in model.parameters() if p.requires_grad]
-	optimizer = torch.optim.Adam(params, lr=0.001)
+	optimizer = torch.optim.Adam(params, lr=0.0005)
 
 	# let's train it for 10 epochs
 	num_epochs = 100
+	#model.load_state_dict(torch.load(os.path.join(save_dir,"stage2_0.pt"))['model_state_dict'])
 	torch.save({'epoch': -1,
 				'model_state_dict': model.state_dict(),
 				'optimizer_state_dict': optimizer.state_dict()},
 				os.path.join(save_dir,"stage2_0.pt"))
 	for epoch in range(num_epochs):
-		# train for one epoch, printing every 10 iterations
 		train_one_epoch(model, criterion, optimizer, data_loader, device, epoch, print_freq=100, logfile=logfile)
-		# update the learning rate
 		torch.save({'epoch': epoch,
 				'model_state_dict': model.state_dict(),
 				'optimizer_state_dict': optimizer.state_dict()},
 				os.path.join(save_dir,"stage2_"+str(epoch)+".pt"))
-		test_qual(model, criterion, optimizer, dataset_test, device, print_freq=100, save_dir=save_dir, e=epoch)
-		test_quant(model, criterion, optimizer, data_loader_test, device, print_freq=100, logfile=logfile)
+		#test_qual(model, criterion, optimizer, dataset_test, device, print_freq=100, save_dir=save_dir, e=epoch)
+		#test_quant(model, criterion, optimizer, data_loader_test, device, print_freq=100, logfile=logfile)
 		
 
 if __name__=="__main__":
