@@ -116,7 +116,9 @@ class Stage2Dataset(Dataset):
 		target["iscrowd"] = torch.zeros((1,), dtype=torch.int64)
 
 		if self.transforms is not None:
-			(color,normal,plane,depth), target = self.transforms((color,normal,plane,depth), target)
+			(color_norm,color,normal,plane,depth), target = self.transforms((color,normal,plane,depth), target)
+		else:
+			color_norm = color
 
 		H, W = plane.shape[1:]
 		U, V = np.tile(np.arange(W), (H, 1)), np.tile(np.arange(H), (W, 1)).T
@@ -128,7 +130,16 @@ class Stage2Dataset(Dataset):
 		Z = F.convert_image_dtype(plane)
 		uvz = torch.stack([X,Y,Z]).squeeze(1)
 
+		# U, V = np.tile(np.arange(W), (H, 1)), np.tile(np.arange(H), (W, 1)).T
+		# fx, fy, cx, cy = self.intrinsic[0, 0], self.intrinsic[1, 1], self.intrinsic[0, 2], self.intrinsic[1, 2]
+		# X, Y = plane * (U - cx) / fx, plane * (V - cy) / fy
+		# X = F.convert_image_dtype(X)
+		# Y = F.convert_image_dtype(Y)
+		# Z = F.convert_image_dtype(depth)
+		# uvd = torch.stack([X,Y,Z]).squeeze(1)
+
 		crops_color = roi_align(color.unsqueeze(0), [target['boxes']], (80,80), 1, 1)
+		crops_color_norm = roi_align(color_norm.unsqueeze(0), [target['boxes']], (80,80), 1, 1)
 		crops_normal = roi_align(normal.unsqueeze(0), [target['boxes']], (80,80), 1, 1)
 		crops_plane = roi_align(plane.unsqueeze(0), [target['boxes']], (80,80), 1, 1)
 		crops_uvz = roi_align(uvz.unsqueeze(0), [target['boxes']], (80,80), 1, 1)
@@ -157,7 +168,7 @@ class Stage2Dataset(Dataset):
 		target["diameter"] = self.diameters[obj_ids]
 		target["symmetric"] = self.object_list[obj_ids][2]!='normal'
 
-		return color, crops_color, crops_geometry_per_image, crops_masks, target
+		return color_norm, color, crops_color_norm, crops_color, crops_geometry_per_image, crops_masks, target
 
 
 

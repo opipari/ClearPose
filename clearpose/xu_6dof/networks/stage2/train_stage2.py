@@ -44,6 +44,7 @@ from pytorch3d.transforms import quaternion_apply, Translate
 def get_transform(train):
 	transforms = []
 	transforms.append(T.ToTensorSet())
+	transforms.append(T.NormalizeSet(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]))
 	# if train:
 	# 	transforms.append(T.RandomHorizontalFlipSet(0.5))
 	return T.Compose(transforms)
@@ -128,9 +129,9 @@ def train_one_epoch(model, criterion, optimizer, data_loader, device, epoch, pri
 	header = f"Epoch: [{epoch}]"
 
 	i=0
-	for color, color_crops, geom_crops, masks_crops, targets in metric_logger.log_every(data_loader, print_freq, header):
+	for color_norm, color, color_norm_crops, color_crops, geom_crops, masks_crops, targets in metric_logger.log_every(data_loader, print_freq, header):
 		# boxes_per_image = [c.shape[0] for c in color_crops]
-		color, color_crops, geom_crops, masks_crops, obj_ids = torch.stack(color), torch.cat(color_crops), torch.cat(geom_crops), torch.cat(masks_crops), torch.cat([t["labels"] for t in targets]) 
+		color_norm, color, color_norm_crops, color_crops, geom_crops, masks_crops, obj_ids = torch.stack(color_norm), torch.stack(color), torch.cat(color_norm_crops), torch.cat(color_crops), torch.cat(geom_crops), torch.cat(masks_crops), torch.cat([t["labels"] for t in targets]) 
 		
 		target_quats = torch.cat([t["quats"] for t in targets])
 		target_trans = torch.cat([t["trans"] for t in targets])
@@ -139,12 +140,12 @@ def train_one_epoch(model, criterion, optimizer, data_loader, device, epoch, pri
 		target_mesh_rots = [t["mesh_rot"] for t in targets]
 		target_symmetric = [t["symmetric"] for t in targets]
 
-		color_crops = color_crops.to(device)
+		color_norm_crops = color_norm_crops.to(device)
 		geom_crops = geom_crops.to(device)
 		masks_crops = masks_crops.to(device)
 		obj_ids = obj_ids.to(device)
 		with torch.cuda.amp.autocast(enabled=scaler is not None):
-			tx, rx, cx, choose = model(color_crops, geom_crops.permute(0,2,3,1), masks_crops.permute(0,2,3,1), obj_ids)
+			tx, rx, cx, choose = model(color_norm_crops, geom_crops.permute(0,2,3,1), masks_crops.permute(0,2,3,1), obj_ids)
 			loss, loss_r, loss_reg, loss_t = criterion(tx, rx, cx, target_mesh_rots, target_trans, target_meshes, choose, target_symmetric, target_diameters)
 
 
@@ -160,7 +161,7 @@ def train_one_epoch(model, criterion, optimizer, data_loader, device, epoch, pri
 
 		metric_logger.update(loss=loss.item(), lr=optimizer.param_groups[0]["lr"], loss_r=loss_r, loss_reg=loss_reg, loss_t=loss_t)
 		
-		if i>20000:
+		if i>10000:
 			break
 		i+=1
 
@@ -173,9 +174,9 @@ def test_quant(model, criterion, optimizer, data_loader, device, print_freq, log
 	num_count = [0 for i in range(model.num_obj)]
 
 	b=0
-	for color, color_crops, geom_crops, masks_crops, targets in metric_logger.log_every(data_loader, print_freq, header):
+	for color_norm, color, color_norm_crops, color_crops, geom_crops, masks_crops, targets in metric_logger.log_every(data_loader, print_freq, header):
 		# boxes_per_image = [c.shape[0] for c in color_crops]
-		color, color_crops, geom_crops, masks_crops, obj_ids = torch.stack(color), torch.cat(color_crops), torch.cat(geom_crops), torch.cat(masks_crops), torch.cat([t["labels"] for t in targets]) 
+		color_norm, color, color_norm_crops, color_crops, geom_crops, masks_crops, obj_ids = torch.stack(color_norm), torch.stack(color), torch.cat(color_norm_crops), torch.cat(color_crops), torch.cat(geom_crops), torch.cat(masks_crops), torch.cat([t["labels"] for t in targets]) 
 		
 		target_quats = torch.cat([t["quats"] for t in targets])
 		target_trans = torch.cat([t["trans"] for t in targets])
@@ -184,18 +185,18 @@ def test_quant(model, criterion, optimizer, data_loader, device, print_freq, log
 		target_mesh_rots = [t["mesh_rot"] for t in targets]
 		target_symmetric = [t["symmetric"] for t in targets]
 
-		color_crops = color_crops.to(device)
+		color_norm_crops = color_norm_crops.to(device)
 		geom_crops = geom_crops.to(device).permute(0,2,3,1)
 		masks_crops = masks_crops.to(device).permute(0,2,3,1)
 		obj_ids = obj_ids.to(device)
 		with torch.cuda.amp.autocast(enabled=scaler is not None):
-			pred_t, pred_r, pred_c, choose = model(color_crops, geom_crops, masks_crops, obj_ids)
+			pred_t, pred_r, pred_c, choose = model(color_norm_crops, geom_crops, masks_crops, obj_ids)
 			loss, loss_r, loss_reg, loss_t = criterion(pred_t, pred_r, pred_c, target_mesh_rots, target_trans, target_meshes, choose, target_symmetric, target_diameters)
 
 		
 		how_min, which_min = torch.min(pred_c, 1)
 		points = geom_crops[:,:,:,4:].flatten(start_dim=1, end_dim=2)[choose].view(geom_crops.shape[0], model.N, 3)
-		pred_t, pred_mask = ransac_voting_layer(points, pred_t, inlier_thresh=-100000)
+		pred_t, pred_mask = ransac_voting_layer(points, pred_t, inlier_thresh=0.99)
 		
 		
 		pred_t = pred_t.cpu().data.numpy()
@@ -234,9 +235,9 @@ def test_qual(model, criterion, optimizer, dataset, device, print_freq, save_dir
 		i = 0#np.random.randint(len(dataset.object_counts))
 		start_idx = dataset.object_counts[i-1] if (i>0) else 0
 		data = utils.collate_fn([dataset[idx] for idx in range(start_idx, dataset.object_counts[i])])
-		color, color_crops, geom_crops, masks_crops, targets = data
-		color, color_crops, geom_crops, masks_crops, obj_ids = torch.stack(color), torch.cat(color_crops), torch.cat(geom_crops), torch.cat(masks_crops), torch.cat([t["labels"] for t in targets]) 
-
+		color_norm, color, color_norm_crops, color_crops, geom_crops, masks_crops, targets = data
+		color_norm, color, color_norm_crops, color_crops, geom_crops, masks_crops, obj_ids = torch.stack(color_norm), torch.stack(color), torch.cat(color_norm_crops), torch.cat(color_crops), torch.cat(geom_crops), torch.cat(masks_crops), torch.cat([t["labels"] for t in targets]) 
+		
 		target_quats = torch.cat([t["quats"] for t in targets])
 		target_trans = torch.cat([t["trans"] for t in targets])
 		target_trans_gt = torch.cat([t["trans_gt"] for t in targets])
@@ -246,17 +247,17 @@ def test_qual(model, criterion, optimizer, dataset, device, print_freq, save_dir
 		labels = [t["labels"].item() for t in targets]
 		target_symmetric = [t["symmetric"] for t in targets]
 
-		color_crops = color_crops.to(device)
+		color_norm_crops = color_norm_crops.to(device)
 		geom_crops = geom_crops.to(device).permute(0,2,3,1)
 		masks_crops = masks_crops.to(device).permute(0,2,3,1)
 		obj_ids = obj_ids.to(device)
 		with torch.cuda.amp.autocast(enabled=scaler is not None):
-			pred_t, pred_r, pred_c, choose = model(color_crops, geom_crops, masks_crops, obj_ids)
+			pred_t, pred_r, pred_c, choose = model(color_norm_crops, geom_crops, masks_crops, obj_ids)
 			loss, loss_r, loss_reg, loss_t = criterion(pred_t, pred_r, pred_c, target_mesh_rots, target_trans, target_meshes, choose, target_symmetric, target_diameters)
-
+		print('loss',loss)
 		how_min, which_min = torch.min(pred_c, 1)
 		points = geom_crops[:,:,:,4:].flatten(start_dim=1, end_dim=2)[choose].view(geom_crops.shape[0], model.N, 3)
-		pred_t, pred_mask = ransac_voting_layer(points, pred_t, inlier_thresh=-100000)
+		pred_t, pred_mask = ransac_voting_layer(points, pred_t, inlier_thresh=0.99)
 
 		# print("True Trans:", target_trans_gt)
 		# print("Estimated Trans:", pred_t)
@@ -372,7 +373,7 @@ def main(save_dir=os.path.join("experiments","xu_6dof","stage2","models")):
 
 	# use our dataset and defined transformations
 	dataset = Stage2Dataset(image_list="./data/train_images.csv", transforms=get_transform(train=True))
-	dataset_test = Stage2Dataset(image_list="./data/val_images.csv", transforms=get_transform(train=False))
+	dataset_test = Stage2Dataset(image_list="./data/train_images.csv", transforms=get_transform(train=False))
 
 	# define training and validation data loaders
 	data_loader = torch.utils.data.DataLoader(
@@ -398,8 +399,9 @@ def main(save_dir=os.path.join("experiments","xu_6dof","stage2","models")):
 	optimizer = torch.optim.Adam(params, lr=0.0005)
 
 	# let's train it for 10 epochs
-	num_epochs = 100
-	#model.load_state_dict(torch.load(os.path.join(save_dir,"stage2_0.pt"))['model_state_dict'])
+	num_epochs = 1000
+	#model.load_state_dict(torch.load(os.path.join(save_dir,"stage2_15.pt"))['model_state_dict'])
+	#optimizer.load_state_dict(torch.load(os.path.join(save_dir,"stage2_15.pt"))['optimizer_state_dict'])
 	torch.save({'epoch': -1,
 				'model_state_dict': model.state_dict(),
 				'optimizer_state_dict': optimizer.state_dict()},

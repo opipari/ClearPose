@@ -75,7 +75,7 @@ class ToTensor(nn.Module):
 class ToTensorSet(nn.Module):
     def forward(
         self, images: Tuple[Tensor], target: Optional[Dict[str, Tensor]] = None
-    ) -> Tuple[Tensor, Optional[Dict[str, Tensor]]]:
+    ) -> Tuple[Tuple[Tensor], Optional[Dict[str, Tensor]]]:
         images = tuple(F.pil_to_tensor(image) for image in images)
         images = tuple(F.convert_image_dtype(image) for image in images)
         return images, target
@@ -92,7 +92,7 @@ class PILToTensor(nn.Module):
 class PILToTensorSet(nn.Module):
     def forward(
         self, images: Tuple[Tensor], target: Optional[Dict[str, Tensor]] = None
-    ) -> Tuple[Tensor, Optional[Dict[str, Tensor]]]:
+    ) -> Tuple[Tuple[Tensor], Optional[Dict[str, Tensor]]]:
         images = tuple(F.pil_to_tensor(image) for image in images)
         return images, target
 
@@ -107,6 +107,19 @@ class ConvertImageDtype(nn.Module):
     ) -> Tuple[Tensor, Optional[Dict[str, Tensor]]]:
         image = F.convert_image_dtype(image, self.dtype)
         return image, target
+
+
+class NormalizeSet(nn.Module):
+    def __init__(self, mean, std):
+        super().__init__()
+        self.mean = mean
+        self.std = std
+
+    def forward(
+        self, images: Tuple[Tensor], target: Optional[Dict[str, Tensor]] = None
+    ) -> Tuple[Tuple[Tensor], Optional[Dict[str, Tensor]]]:
+        image_n = F.normalize(images[0], mean=self.mean, std=self.std)
+        return tuple([image_n]+list(images)), target
 
 
 class RandomIoUCrop(nn.Module):
