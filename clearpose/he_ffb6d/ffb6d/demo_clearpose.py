@@ -15,7 +15,7 @@ import torch.nn as nn
 import numpy as np
 import pickle as pkl
 from common import Config, ConfigRandLA
-from datasets.clearpose.clearpose_dataset import Dataset as Clearpose_Dataset
+from datasets.clearpose.clearpose_dataset_test import Dataset_test as Clearpose_Dataset
 from models.ffb6d import FFB6D
 # from datasets.ycb.ycb_dataset import Dataset as YCB_Dataset
 # from datasets.linemod.linemod_dataset import Dataset as LM_Dataset
@@ -43,6 +43,9 @@ parser.add_argument(
 )
 parser.add_argument(
     "-show", action='store_true', help="View from imshow or not."
+)
+parser.add_argument(
+    "-test_type", type=str, help="test type"
 )
 args = parser.parse_args()
 
@@ -163,7 +166,7 @@ def main():
     # else:
     #     test_ds = LM_Dataset('test', cls_type=args.cls)
     #     obj_id = config.lm_obj_dict[args.cls]
-    test_ds = Clearpose_Dataset('test')
+    test_ds = Clearpose_Dataset(args.test_type)
     test_loader = torch.utils.data.DataLoader(
         test_ds, batch_size=config.test_mini_batch_size, shuffle=False,
         num_workers=20

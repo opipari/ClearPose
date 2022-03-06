@@ -26,7 +26,7 @@ import torch.backends.cudnn as cudnn
 from tensorboardX import SummaryWriter
 
 from common import Config, ConfigRandLA
-import datasets.clearpose.clearpose_dataset as dataset_desc
+import datasets.clearpose.clearpose_dataset_test as dataset_desc
 from utils.pvn3d_eval_utils_kpls import TorchEval
 from utils.basic_utils import Basic_Utils
 
@@ -40,18 +40,7 @@ from apex import amp
 from apex.multi_tensor_apply import multi_tensor_applier
 
 
-config = Config(ds_name='clearpose')
-bs_utils = Basic_Utils(config)
-writer = SummaryWriter(log_dir=config.log_traininfo_dir)
 
-rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
-resource.setrlimit(resource.RLIMIT_NOFILE, (30000, rlimit[1]))
-
-color_lst = [(0, 0, 0)]
-for i in range(config.n_objects):
-    col_mul = (255 * 255 * 255) // (i+1)
-    color = (col_mul//(255*255), (col_mul//255) % 255, col_mul % 255)
-    color_lst.append(color)
 
 
 parser = argparse.ArgumentParser(description="Arg parser")
@@ -108,13 +97,31 @@ parser.add_argument('--deterministic', action='store_true')
 parser.add_argument('--keep_batchnorm_fp32', default=True)
 parser.add_argument('--opt_level', default="O0", type=str,
                     help='opt level of apex mix presision trainig.')
+
 parser.add_argument(
     "-test_type", type=str, help="test type"
+)
+
+parser.add_argument(
+    "-depth_type", type=str, help="test type"
 )
 
 args = parser.parse_args()
 
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+
+config = Config(ds_name='clearpose', test_type =args.depth_type)
+bs_utils = Basic_Utils(config)
+writer = SummaryWriter(log_dir=config.log_traininfo_dir)
+
+rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
+resource.setrlimit(resource.RLIMIT_NOFILE, (30000, rlimit[1]))
+
+color_lst = [(0, 0, 0)]
+for i in range(config.n_objects):
+    col_mul = (255 * 255 * 255) // (i+1)
+    color = (col_mul//(255*255), (col_mul//255) % 255, col_mul % 255)
+    color_lst.append(color)
 
 
 lr_clip = 1e-5
@@ -557,21 +564,21 @@ def train():
     torch.manual_seed(0)
     model_config = {}
     if not args.eval_net:
-        train_ds = dataset_desc.Dataset('train')
+        train_ds = dataset_desc.Dataset_test('train')
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_ds)
         train_loader = torch.utils.data.DataLoader(
             train_ds, batch_size=config.mini_batch_size, shuffle=False,
             drop_last=True, num_workers=4, sampler=train_sampler, pin_memory=True
         )
         model_config = train_ds.model_config
-        val_ds = dataset_desc.Dataset('test')
+        val_ds = dataset_desc.Dataset_test('test')
         val_sampler = torch.utils.data.distributed.DistributedSampler(val_ds)
         val_loader = torch.utils.data.DataLoader(
             val_ds, batch_size=config.val_mini_batch_size, shuffle=False,
             drop_last=False, num_workers=4, sampler=val_sampler
         )
     else:
-        test_ds = dataset_desc.Dataset('test')
+        test_ds = dataset_desc.Dataset_test(args.test_type)
         model_config = test_ds.model_config
         test_loader = torch.utils.data.DataLoader(
             test_ds, batch_size=config.test_mini_batch_size, shuffle=False,

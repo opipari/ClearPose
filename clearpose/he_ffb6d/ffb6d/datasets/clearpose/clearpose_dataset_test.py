@@ -23,16 +23,17 @@ import random
 import time
 import yaml
 import colorsys
+import csv
+from train_clearpose_test import config
 
-
-config = Config(ds_name='clearpose')
 bs_utils = Basic_Utils(config)
 
 
-class Dataset():
+class Dataset_test():
 
     def __init__(self, dataset_name, DEBUG=False):
         self.dataset_name = dataset_name
+        assert(self.dataset_name in ["standard", "occlusion", "non-planner", "covered", "color"])
         self.debug = DEBUG
         self.xmap = np.array([[j for i in range(640)] for j in range(480)])
         self.ymap = np.array([[i for i in range(640)] for j in range(480)])
@@ -46,20 +47,17 @@ class Dataset():
         self.rng = np.random
         self.root = config.clearpose_root
         self.model_config = self.parsemodel(self.root)
-        if dataset_name == 'train':
-            self.add_noise = True
-            self.all_lst = self.dataset_list(self.root, config.train_list, config.train_ratio)
-            self.minibatch_per_epoch = len(self.all_lst) // config.mini_batch_size
-            self.meta_data = self.loadmeta(self.root, config.train_list)
-            self.depth_type = config.depth_train
-        else:
-            self.pp_data = None
-            self.add_noise = False
-            self.all_lst = self.dataset_list(self.root, config.test_list, config.test_ratio)
-            self.meta_data = self.loadmeta(self.root, config.test_list)
-            self.depth_type = config.depth_test
+        self.pp_data = None
+        self.add_noise = False
+        self.all_lst = []
+        f = csv.reader(open(f"/home/huijie/research/transparentposeestimation/ClearPose/data/{self.dataset_name}_test.csv"))
+        for l in f:
+            set, scene = l[1].split("/")[-2:]
+            self.all_lst.append((set, scene, l[2]))
+        self.meta_data = self.loadmeta(self.root, self.all_lst)
+        self.depth_type = config.depth_test
         print("{}_dataset_size: ".format(dataset_name), len(self.all_lst))
-        
+
     @staticmethod
     def dataset_list(root_path, dataset_list, ratio):
         datalst = []
@@ -70,13 +68,24 @@ class Dataset():
         random.shuffle(datalst)
         return datalst[:int(len(datalst)*ratio)]
 
+    # @staticmethod
+    # def loadmeta(root_path, dataset_list):
+    #     metalist = {}
+    #     for set_idx in dataset_list:
+    #         metalist[set_idx] = {}
+    #         for scene_idx in dataset_list[set_idx]:
+    #             metalist[set_idx][f"scene{scene_idx}"] = scio.loadmat(os.path.join(root_path, set_idx, f"scene{scene_idx}", "metadata.mat"))
+
+    #     return metalist
+
     @staticmethod
-    def loadmeta(root_path, dataset_list):
+    def loadmeta(root_path, all_lst):
         metalist = {}
-        for set_idx in dataset_list:
-            metalist[set_idx] = {}
-            for scene_idx in dataset_list[set_idx]:
-                metalist[set_idx][f"scene{scene_idx}"] = scio.loadmat(os.path.join(root_path, set_idx, f"scene{scene_idx}", "metadata.mat"))
+        for (set_idx, scene_idx, _) in all_lst:
+            if not set_idx in metalist:
+                metalist[set_idx] = {}
+            if not scene_idx in metalist[set_idx]:
+                metalist[set_idx][scene_idx] = scio.loadmat(os.path.join(root_path, set_idx, scene_idx, "metadata.mat"))
 
         return metalist
     
@@ -195,13 +204,9 @@ class Dataset():
                 dpt_um = np.array(di)
         elif self.depth_type == "raw":
             with Image.open(os.path.join(self.root, scene_idx, set_idx, data_idx+'-depth.png')) as di:
-                dpt_um = np.array(di)          
-        elif self.depth_type == "depthcomplete":
-            with Image.open(os.path.join(self.root, scene_idx, set_idx, data_idx+'-pred.png')) as di:
-                dpt_um = np.array(di)               
+                dpt_um = np.array(di)            
         with Image.open(os.path.join(self.root, scene_idx, set_idx, data_idx+'-label.png')) as li:
             labels = np.array(li)
-        
         rgb_labels = labels.copy()
         # meta = scio.loadmat(os.path.join(self.root, item_name+'-meta.mat'))
         # if item_name[:8] != 'data_syn' and int(item_name[5:9]) >= 60:
@@ -465,7 +470,7 @@ def main():
     global DEBUG
     DEBUG = True
     ds = {}
-    ds = Dataset('test', DEBUG=False)
+    ds = Dataset_test("standard", DEBUG=False)
     while True:
         index = np.random.randint(0, len(ds))
         ds.__getitem__(index)

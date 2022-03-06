@@ -349,6 +349,7 @@ class TorchEval():
         add_auc_lst = []
         adds_auc_lst = []
         add_s_auc_lst = []
+        accuarcy_list = []
         for cls_id in range(1, self.n_cls):
             if (cls_id) in config.clearpose_sym_cls_ids:
                 self.cls_add_s_dis[cls_id] = self.cls_adds_dis[cls_id]
@@ -359,13 +360,16 @@ class TorchEval():
             add_auc = bs_utils.cal_auc(self.cls_add_dis[i], max_dis=0.1)
             adds_auc = bs_utils.cal_auc(self.cls_adds_dis[i], max_dis=0.1)
             add_s_auc = bs_utils.cal_auc(self.cls_add_s_dis[i], max_dis=0.1)
+            accuracy = np.sum(np.array(self.cls_add_dis[i]) < 0.1)/len(self.cls_add_dis[i])
             add_auc_lst.append(add_auc)
+            accuarcy_list.append(accuracy)
             adds_auc_lst.append(adds_auc)
             add_s_auc_lst.append(add_s_auc)
             if i == 0:
                 continue
             cls_lst_inv = {v : k for k, v in cls_lst.items()}
             print(cls_lst_inv[i])
+            print("***************accuracy:\t", accuracy)
             print("***************add:\t", add_auc)
             print("***************adds:\t", adds_auc)
             print("***************add(-s):\t", add_s_auc)
@@ -375,8 +379,9 @@ class TorchEval():
         for cls_id in range(1, self.n_cls):
             all_errs += sum(self.pred_kp_errs[cls_id])
         print("mean kps errs:", all_errs / n_objs)
-
+        accuarcy_list = np.array(accuarcy_list)
         print("Average of all object:")
+        print("***************accuracy:\t", np.mean(accuarcy_list[~np.isnan(accuarcy_list)]))
         print("***************add:\t", np.mean(add_auc_lst[1:]))
         print("***************adds:\t", np.mean(adds_auc_lst[1:]))
         print("***************add(-s):\t", np.mean(add_s_auc_lst[1:]))

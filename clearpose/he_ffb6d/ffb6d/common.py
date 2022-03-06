@@ -28,7 +28,7 @@ class ConfigRandLA:
 
 
 class Config:
-    def __init__(self, ds_name='ycb', cls_type=''):
+    def __init__(self, ds_name='ycb', cls_type='', test_type = 'GT'):
         self.dataset_name = ds_name
         # self.exp_dir = os.path.dirname(__file__)
         self.exp_dir = "/home/huijie/research/transparentposeestimation/ClearPose/experiments/he_ffb6d"
@@ -57,8 +57,8 @@ class Config:
 
         self.n_total_epoch = 20
         self.mini_batch_size = 6
-        self.val_mini_batch_size = 6
-        self.test_mini_batch_size = 6
+        self.val_mini_batch_size = 4
+        self.test_mini_batch_size = 4
 
         self.n_sample_points = 480 * 640 // 24  # Number of input points
         self.n_keypoints = 8
@@ -182,15 +182,18 @@ class Config:
             #     "set1": [1],
             # }
 
+            # self.test_list = {
+            #     "set1": [5],
+            #     "set2": [1, 3, 4, 5, 6],
+            #     "set3": [1, 3, 4, 8, 11],
+            #     "set4": [6],
+            #     "set5": [6],
+            #     "set6": [6],
+            #     "set7": [6],
+            #     "set8": [1, 2, 3, 4, 5, 6]          
+            # }
             self.test_list = {
-                "set1": [5],
-                "set2": [1, 3, 4, 5, 6],
-                "set3": [1, 3, 4, 8, 11],
-                "set4": [6],
-                "set5": [6],
-                "set6": [6],
-                "set7": [6],
-                "set8": [1, 2, 3, 4, 5, 6]          
+                "set1": [5] 
             }
             # self.test_list = {
             #     "set1": [1, 2, 3, 4],
@@ -205,7 +208,8 @@ class Config:
 
             ## train could be ["GT", "raw", "depthcomplete"]
             self.depth_train = "raw"
-            self.depth_test = "raw"
+            assert test_type in ["GT", "raw", "depthcomplete"]
+            self.depth_test = test_type
 
             self.mask_ignore = 0
 
