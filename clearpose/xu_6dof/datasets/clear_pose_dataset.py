@@ -21,7 +21,7 @@ class ClearPoseDataset(Dataset):
 					   model_dir="./data",
 					   transforms=None):
 		self.N = 500
-		self.N_mesh = 500
+		self.N_mesh = 2000 # to calculate add and adds
 		self.image_list = [ln.strip().split(',') for ln in open(image_list,'r').readlines()]
 		self.object_counts = np.cumsum(np.array([int(ln[-1]) for ln in self.image_list]))
 		self.object_list = [ln.strip().split(',') for ln in open(object_list,'r').readlines()]
@@ -64,7 +64,8 @@ class ClearPoseDataset(Dataset):
 
 	def __getitem__(self, idx, r=True):
 		_, scene_path, imgid, _ =  self.image_list[idx]
-
+		print(idx, scene_path, imgid)
+		imgid = f"{int(imgid):06d}"
 		color_path = os.path.join(scene_path, imgid+'-color.png')
 		mask_path = os.path.join(scene_path, imgid+'-label.png')
 		normal_path = os.path.join(scene_path, imgid+'-normal_true.png')
@@ -75,7 +76,7 @@ class ClearPoseDataset(Dataset):
 		color = Image.open(color_path).convert("RGB")
 		mask = Image.open(mask_path)
 		normal = Image.open(normal_path)
-		plane = np.array(Image.open(plane_path))*0
+		plane = np.array(Image.open(plane_path))
 		depth = np.array(Image.open(depth_path))
 		meta = loadmat(meta_path)[imgid][0,0]
 
@@ -144,6 +145,10 @@ class ClearPoseDataset(Dataset):
 		target["trans"] = target["trans_gt"].view(-1,3,1,1) - crops_uvz
 		target["trans"] = target["trans"] / torch.linalg.vector_norm(target["trans"], dim=1, keepdim=True)
 
+		max_ind = max(target['labels'][0].tolist())
+		if max_ind >= len(self.meshes):
+			print('mesh index error')
+			return color_norm, color, uvz, crops_color_norm, crops_color, crops_geometry_per_image, crops_masks, target
 		mesh = self.meshes[target['labels'][0].tolist()].clone()
 		mesh_pre_rot = mesh.verts_padded()
 		mesh = mesh.update_padded(quaternion_apply(target['quats'].squeeze(0).unsqueeze(1).type(torch.float32), mesh.verts_padded()))
