@@ -84,6 +84,7 @@ class Loss(nn.Module):
 			model_points_ = model_points[i].view(1, 1, model_points[i].shape[1], 3).repeat(1, num_rot, 1, 1).view(1*num_rot, model_points[i].shape[1], 3)
 			model_points_ = model_points_.to(rotations.device)
 			pred_r = torch.bmm(model_points_, rotations[i])
+			# print(obj_diameter.shape, pred_c.shape)
 			if symmetric[i]:
 				dist = torch.linalg.vector_norm(pred_r.unsqueeze(2) - target_r[i].unsqueeze(1).to(pred_r.device), dim=3)
 				loss_r += torch.mean(torch.mean(dist.min(2)[0], dim=1) / (obj_diameter*pred_c[i]) + torch.log(pred_c[i]), dim=0)
@@ -102,7 +103,7 @@ def show(imgs,titles,subimgs):
 
 
 	fig = plt.figure()
-	print(1+int(math.ceil(subimgs.shape[0]/4)))
+	# print(1+int(math.ceil(subimgs.shape[0]/4)))
 	gs = gridspec.GridSpec(1+int(math.ceil(subimgs.shape[0]/4)), 4, figure=fig)
 	ax1 = fig.add_subplot(gs[0, :2])
 	ax2 = fig.add_subplot(gs[0, 2:])
@@ -400,13 +401,13 @@ def main(save_dir=os.path.join("experiments","xu_6dof","stage2","models")):
 
 	# let's train it for 10 epochs
 	num_epochs = 1000
-	#model.load_state_dict(torch.load(os.path.join(save_dir,"stage2_15.pt"))['model_state_dict'])
-	#optimizer.load_state_dict(torch.load(os.path.join(save_dir,"stage2_15.pt"))['optimizer_state_dict'])
-	torch.save({'epoch': -1,
-				'model_state_dict': model.state_dict(),
-				'optimizer_state_dict': optimizer.state_dict()},
-				os.path.join(save_dir,"stage2_0.pt"))
-	for epoch in range(num_epochs):
+	model.load_state_dict(torch.load(os.path.join(save_dir,"stage2_15.pt"))['model_state_dict'])
+	optimizer.load_state_dict(torch.load(os.path.join(save_dir,"stage2_15.pt"))['optimizer_state_dict'])
+	#torch.save({'epoch': -1,
+	#			'model_state_dict': model.state_dict(),
+	#			'optimizer_state_dict': optimizer.state_dict()},
+	#			os.path.join(save_dir,"stage2_0.pt"))
+	for epoch in range(16, num_epochs):
 		train_one_epoch(model, criterion, optimizer, data_loader, device, epoch, print_freq=100, logfile=logfile)
 		torch.save({'epoch': epoch,
 				'model_state_dict': model.state_dict(),
