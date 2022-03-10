@@ -9,7 +9,7 @@ from clearpose.xu_6dof.networks.references.detection.coco_eval import CocoEvalua
 from clearpose.xu_6dof.networks.references.detection.coco_utils import get_coco_api_from_dataset
 
 
-def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, scaler=None, lr_scheduler_=None, logfile=None):
+def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, scaler=None, lr_scheduler_=None, logfile=None, stop_at=None):
     model.train()
     metric_logger = utils.MetricLogger(delimiter="  ", logfile=logfile)
     metric_logger.add_meter("lr", utils.SmoothedValue(window_size=1, fmt="{value:.6f}"))
@@ -24,7 +24,11 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, sc
             optimizer, start_factor=warmup_factor, total_iters=warmup_iters
         )
 
+    batch_i=0
     for images, targets in metric_logger.log_every(data_loader, print_freq, header):
+        if stop_at is not None and batch_i>stop_at:
+            break
+        batch_i+=1
         images = list(image.to(device) for image in images)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
         with torch.cuda.amp.autocast(enabled=scaler is not None):

@@ -6,7 +6,7 @@ def main():
 	train_summary_file = open('./data/train_images.csv', 'w')
 	train_sets = ['set1','set4','set5','set6','set7']
 
-	root = "/media/logan/1E10C4A130358D19/clearpose/"
+	root = "/media/mytre/216F2E9C45E9E56E/"
 	sets = [sett for sett in sorted(os.listdir(root)) if sett.startswith('set') and not sett.endswith('.gz')]
 	sets = [sett for sett in sets if sett in train_sets]
 	img_id = 0
