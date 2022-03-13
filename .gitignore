@@ -19,3 +19,6 @@ data/
 *.json
 *.pdf
 *.pt
+stats/
+incorrect_intrinsic/
+down_stats2/
