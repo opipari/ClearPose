@@ -10,7 +10,7 @@ import normalSpeed
 
 from utils.ip_basic.ip_basic import vis_utils
 from utils.ip_basic.ip_basic import depth_map_utils_ycb as depth_map_utils
-
+import trimesh
 
 intrinsic_matrix = {
     'linemod': np.array([[572.4114, 0.,         325.2611],
@@ -657,6 +657,9 @@ class Basic_Utils():
     def cal_add_cuda(
         self, pred_RT, gt_RT, p3ds
     ):
+        numbs = 2000
+        choice = np.random.choice(p3ds.shape[0], numbs, replace=(p3ds.shape[0] < numbs))
+        p3ds = p3ds[choice, :]
         pred_p3ds = torch.mm(p3ds, pred_RT[:, :3].transpose(1, 0)) + pred_RT[:, 3]
         gt_p3ds = torch.mm(p3ds, gt_RT[:, :3].transpose(1, 0)) + gt_RT[:, 3]
         dis = torch.norm(pred_p3ds - gt_p3ds, dim=1)
@@ -665,6 +668,9 @@ class Basic_Utils():
     def cal_adds_cuda(
         self, pred_RT, gt_RT, p3ds
     ):
+        numbs = 2000
+        choice = np.random.choice(p3ds.shape[0], numbs, replace=(p3ds.shape[0] < numbs))
+        p3ds = p3ds[choice, :]
         N, _ = p3ds.size()
         pd = torch.mm(p3ds, pred_RT[:, :3].transpose(1, 0)) + pred_RT[:, 3]
         pd = pd.view(1, N, 3).repeat(N, 1, 1)

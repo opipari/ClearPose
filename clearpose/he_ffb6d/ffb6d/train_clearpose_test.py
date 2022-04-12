@@ -321,7 +321,6 @@ def model_fn_decorator(
 class Trainer(object):
     r"""
         Reasonably generic trainer for pytorch models
-
     Parameters
     ----------
     model : pytorch model
@@ -432,7 +431,6 @@ class Trainer(object):
     ):
         r"""
            Call to begin training the model
-
         Parameters
         ----------
         start_epoch : int

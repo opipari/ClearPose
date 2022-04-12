@@ -24,17 +24,32 @@ import time
 import yaml
 import colorsys
 import csv
-from train_clearpose_test import config
-# from demo_clearpose import config
+# from train_clearpose_test import config
+import argparse
 
+parser = argparse.ArgumentParser(description="Arg parser")
+parser.add_argument(
+    "-test_type", type=str, help="test type"
+)
+parser.add_argument(
+    "-cls", type=str, default="ape",
+    help="Target object to eval in LineMOD dataset. (ape, benchvise, cam, can," +
+    "cat, driller, duck, eggbox, glue, holepuncher, iron, lamp, phone)"
+)
+parser.add_argument(
+    "-depth_type", type=str, help="test type"
+)
+args = parser.parse_args()
+
+
+config = Config(ds_name="clearpose", cls_type=args.cls, test_type = args.depth_type)
 bs_utils = Basic_Utils(config)
-
 
 class Dataset_test():
 
     def __init__(self, dataset_name, DEBUG=False):
         self.dataset_name = dataset_name
-        assert(self.dataset_name in ["standard", "occlusion", "non-planner", "covered", "color", "wou", "vis", "standardvideo", "occlusionvideo", "non-plannervideo", "coveredvideo", "colorvideo", "wouvideo",])
+        assert(self.dataset_name in ["standard", "occlusion", "non-planner", "covered", "color", "wou", "vis", "standardvideo", "occlusionvideo", "non-plannervideo", "coveredvideo", "colorvideo", "wouvideo", "occlusionvis"])
         self.debug = DEBUG
         self.xmap = np.array([[j for i in range(640)] for j in range(480)])
         self.ymap = np.array([[i for i in range(640)] for j in range(480)])
@@ -51,7 +66,8 @@ class Dataset_test():
         self.pp_data = None
         self.add_noise = False
         self.all_lst = []
-        f = csv.reader(open(f"/home/huijie/research/transparentposeestimation/ClearPose/data/{self.dataset_name}_test.csv"))
+        # f = csv.reader(open(f"/home/huijie/research/transparentposeestimation/ClearPose/data/{self.dataset_name}_test.csv"))
+        f = csv.reader(open(f"/home/huijie/research/transparentposeestimation/ClearPose/data/featurepoint_test.csv"))
         for l in f:
             set, scene = l[1].split("/")[-2:]
             self.all_lst.append((set, scene, l[2]))
@@ -199,6 +215,7 @@ class Dataset_test():
         return dpt_3d
 
     def get_item(self, item_name):
+        
         scene_idx, set_idx, data_idx = item_name
         data_idx = f"{int(data_idx):06d}"
         with Image.open(os.path.join(self.root, scene_idx, set_idx, data_idx+'-label.png')) as li:
@@ -282,11 +299,11 @@ class Dataset_test():
         ## to remove objects from YCB and Hope
         cls_id_lst = self.meta_data[scene_idx][set_idx][data_idx]['cls_indexes'][0][0].flatten().astype(np.uint32)
         labels[labels > config.n_classes - 1] = 0
-        np.delete(cls_id_lst, np.where(cls_id_lst > config.n_classes - 1))
-        for cls in cls_id_lst:
-            if np.sum(labels == cls) <= config.mask_ignore:
-                np.delete(cls_id_lst, np.where(cls_id_lst == cls))
-                labels[labels == cls] = 0
+        # np.delete(cls_id_lst, np.where(cls_id_lst > config.n_classes - 1))
+        # for cls in cls_id_lst:
+        #     if np.sum(labels == cls) <= config.mask_ignore:
+        #         np.delete(cls_id_lst, np.where(cls_id_lst == cls))
+        #         labels[labels == cls] = 0
 
         cld = dpt_xyz.reshape(-1, 3)[choose, :]
         rgb_pt = rgb.reshape(-1, 3)[choose, :].astype(np.float32)
@@ -388,6 +405,7 @@ class Dataset_test():
             ctr_3ds=ctr3ds.astype(np.float32),
             kp_3ds=kp3ds.astype(np.float32),
             K = K.astype(np.float32),
+            cls_id_lst = cls_id_lst.astype(np.int32),
         )
         item_dict.update(inputs)
         if self.debug:
@@ -407,22 +425,22 @@ class Dataset_test():
         cls_ids = np.zeros((config.n_objects, 1))
         kp_targ_ofst = np.zeros((config.n_sample_points, config.n_keypoints, 3))
         ctr_targ_ofst = np.zeros((config.n_sample_points, 3))
-        i = 0
-        for cls_id in cls_id_lst:
+        index = 0
+        for i, cls_id in enumerate(cls_id_lst):
             if cls_id in self.model_config:
                 r = meta['poses'][0][0][:, :, i][:, 0:3]
                 t = np.array(meta['poses'][0][0][:, :, i][:, 3:4].flatten()[:, None])
                 RT = np.concatenate((r, t), axis=1)
-                RTs[i] = RT
+                RTs[index] = RT
 
                 ctr = np.array(self.model_config[cls_id]['center'])
                 ctr = np.dot(ctr.T, r.T) + t[:, 0]
-                ctr3ds[i, :] = ctr
+                ctr3ds[index, :] = ctr
                 msk_idx = np.where(labels == cls_id)[0]
 
-                target_offset = np.array(np.add(cld, -1.0*ctr3ds[i, :]))
+                target_offset = np.array(np.add(cld, -1.0*ctr3ds[index, :]))
                 ctr_targ_ofst[msk_idx,:] = target_offset[msk_idx, :]
-                cls_ids[i, :] = np.array([cls_id])
+                cls_ids[index, :] = np.array([cls_id])
 
                 # key_kpts = ''
                 # if config.n_keypoints == 8:
@@ -434,14 +452,14 @@ class Dataset_test():
                 # ).copy()
                 kps = np.array(self.model_config[cls_id]['keypoints'])
                 kps = np.dot(kps, r.T) + t[:, 0]
-                kp3ds[i] = kps
+                kp3ds[index] = kps
 
                 target = []
                 for kp in kps:
                     target.append(np.add(cld, -1.0*kp))
                 target_offset = np.array(target).transpose(1, 0, 2)  # [npts, nkps, c]
                 kp_targ_ofst[msk_idx, :, :] = target_offset[msk_idx, :, :]
-                i += 1
+                index += 1
         return RTs, kp3ds, ctr3ds, cls_ids, kp_targ_ofst, ctr_targ_ofst
 
     def __len__(self):
@@ -456,15 +474,16 @@ class Dataset_test():
     def verify(self, idx):
         item_name = self.all_lst[idx]
         scene_idx, set_idx, data_idx = item_name
-        cls_id_lst = self.meta_data[scene_idx][set_idx][data_idx]['cls_indexes'][0][0].flatten().astype(np.uint32)
-        with Image.open(os.path.join(self.root, scene_idx, set_idx, data_idx+'-label.png')) as li:
+        cls_id_lst = self.meta_data[scene_idx][set_idx][f"{int(data_idx):06d}"]['cls_indexes'][0][0].flatten().astype(np.uint32)
+        with Image.open(os.path.join(self.root, scene_idx, set_idx, f"{int(data_idx):06d}"+'-label.png')) as li:
             labels = np.array(li)
         for cls in cls_id_lst:
             if np.sum(labels == cls) <= config.mask_ignore:
                 np.delete(cls_id_lst, np.where(cls_id_lst == cls))
                 labels[labels == cls] = 0
         data = self.get_item(item_name)
-        image = data['rgb'].transpose(1, 2, 0)[...,::-1]
+        # image = data['rgb'].transpose(1, 2, 0)[...,::-1]
+        image = cv2.imread(os.path.join(self.root, scene_idx, set_idx, f"{int(data_idx):06d}"+'-color.png'))
         
         N = len(cls_id_lst)
         HSV_tuples = [(x*1.0/N, 0.5, 0.5) for x in range(N)]
@@ -478,20 +497,37 @@ class Dataset_test():
             kps_px = np.around(kps_px[:2]/kps_px[2]).astype(np.uint16)
             kplist = kps_px.T.tolist()
             for kp in kplist:
-                image = cv2.circle(image, tuple(kp), radius=0, color=RGB_tuples[i], thickness=2)
+                # image = cv2.circle(image, tuple(kp), radius=1, color=RGB_tuples[i], thickness=2)
+                image = cv2.circle(image, tuple(kp), radius=1, color=(0, 0, 0), thickness=2)
         cv2.imwrite(f"verify_{scene_idx}_{set_idx}_{data_idx}.png", image)
         print(f"verify_{scene_idx}_{set_idx}_{data_idx}")
 
 
 def main():
+    import pickle
+    import tqdm
     # config.mini_batch_size = 1
     global DEBUG
     DEBUG = True
     ds = {}
-    ds = Dataset_test("standard", DEBUG=False)
-    for data in ds:
-        print(data)
-        # input("Press Enter to continue...")
+    ds = Dataset_test(args.test_type, DEBUG=False)
+    dic_inv = {v:k for (k, v) in config.clearpose_obj_dict.items()}
+    pose_dict = {}
+    for idx, data in tqdm.tqdm(enumerate(ds)):
+        img_dict = {}
+        i = 0
+        for label in data['cls_id_lst']:
+            if label in dic_inv:
+                img_dict[label] = data['RTs'][i, :]
+                i+= 1
+        pose_dict[idx] = img_dict
+    # a_file = open(f"pkl/gt_{args.test_type}.pkl", "wb")
+    a_file = open(f"pkl/feature.pkl", "wb")
+    pickle.dump(pose_dict, a_file)
+    a_file.close()
+    # for idx, data in tqdm.tqdm(enumerate(ds)):
+    #     ds.verify(idx)
+
 
 if __name__ == "__main__":
     main()

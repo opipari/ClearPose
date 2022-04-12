@@ -147,7 +147,7 @@ def main():
 	# train_set(root, train_sets)
 
 
-	root = "/media/huijie/482048AF15131E1B/clearpose"
+	root = "/home/huijie/research/transparentposeestimation/ClearPose/clearpose/he_ffb6d/ffb6d/datasets/clearpose/dataset"
 	sets = [sett for sett in os.listdir(root) if sett.startswith('set')]
 	standard_test(root, train_sets)
 	occlusion_test(root)

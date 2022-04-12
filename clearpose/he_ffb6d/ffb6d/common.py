@@ -58,7 +58,7 @@ class Config:
         self.n_total_epoch = 20
         self.mini_batch_size = 6
         self.val_mini_batch_size = 4
-        self.test_mini_batch_size = 4
+        self.test_mini_batch_size = 1
 
         self.n_sample_points = 480 * 640 // 24  # Number of input points
         self.n_keypoints = 8
@@ -171,15 +171,12 @@ class Config:
             self.clearpose_normal_cls = [1, 6, 7, 12, 14, 31, 32, 33, 34, 35, 36, 39, 40]
 
             self.clearpose_sym_cls_ids = [i for i in range(1, 64) if i not in self.clearpose_normal_cls]
-            self.train_list = {
-                "set1": [1, 2, 3, 4],
-                "set4": [1, 2, 3, 4, 5],
-                "set5": [1, 2, 3, 4, 5],
-                "set6": [1, 2, 3, 4, 5],
-                "set7": [1, 2, 3, 4, 5]
-            }
             # self.train_list = {
-            #     "set1": [1],
+            #     "set1": [1, 2, 3, 4],
+            #     "set4": [1, 2, 3, 4, 5],
+            #     "set5": [1, 2, 3, 4, 5],
+            #     "set6": [1, 2, 3, 4, 5],
+            #     "set7": [1, 2, 3, 4, 5]
             # }
 
             # self.test_list = {
@@ -192,23 +189,15 @@ class Config:
             #     "set7": [6],
             #     "set8": [1, 2, 3, 4, 5, 6]          
             # }
-            self.test_list = {
-                "set1": [5] 
-            }
-            # self.test_list = {
-            #     "set1": [1, 2, 3, 4],
-            #     "set4": [1, 2, 3, 4, 5],
-            #     "set5": [1, 2, 3, 4, 5],
-            #     "set6": [1, 2, 3, 4, 5],
-            #     "set7": [1, 2, 3, 4, 5]
-            # }
+            self.train_list = {}
+            self.test_list = {}
 
             self.train_ratio = 1.0
-            self.test_ratio = 0.01
+            self.test_ratio = 1.0
 
             ## train could be ["GT", "raw", "depthcomplete"]
             self.depth_train = "raw"
-            assert test_type in ["GT", "raw", "depthcomplete"]
+            assert test_type in ["GT", "raw", "depthcomplete_transcg_raw", "depthcomplete_transcg_mask", "depthcomplete_id_mask"]
             self.depth_test = test_type
 
             self.mask_ignore = 0

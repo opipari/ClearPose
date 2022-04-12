@@ -163,7 +163,7 @@ def cal_frame_poses(
         pred_RT = best_fit_transform(mesh_kps, pred_kpc)
         pred_kps_lst.append(pred_kpc)
         pred_pose_lst.append(pred_RT)
-
+    
     return (pred_cls_ids, pred_pose_lst, pred_kps_lst)
 
 
@@ -181,11 +181,14 @@ def eval_metric(
 
         gt_kp = gt_kps[icls].contiguous().cpu().numpy()
 
-        cls_idx = np.where(pred_cls_ids == cls_id[0].item())[0]
+        # cls_idx = np.where(pred_cls_ids == cls_id[0].item())[0]
+        cls_idx = np.where(pred_cls_ids == cls_id.item())[0]
         if len(cls_idx) == 0:
             pred_RT = torch.zeros(3, 4).cuda()
             pred_kp = np.zeros(gt_kp.shape)
         else:
+            # pred_RT = torch.zeros(3, 4).cuda()
+            # pred_kp = np.zeros(gt_kp.shape)
             pred_RT = pred_pose_lst[cls_idx[0]]
             pred_kp = pred_kpc_lst[cls_idx[0]][:gt_kp.shape[0], :]
             pred_RT = torch.from_numpy(pred_RT.astype(np.float32)).cuda()
@@ -194,6 +197,7 @@ def eval_metric(
         gt_RT = RTs[icls]
         cls_lst_inv = {v : k for k, v in cls_lst.items()}
         mesh_pts = bs_utils.get_pointxyz_cuda(cls_lst_inv[cls_id.to('cpu').item()]).clone()
+        # mesh_pts = bs_utils.get_pointxyz_cuda(cls_lst_inv[cls_id]).clone()
         add = bs_utils.cal_add_cuda(pred_RT, gt_RT, mesh_pts)
         adds = bs_utils.cal_adds_cuda(pred_RT, gt_RT, mesh_pts)
         cls_add_dis[cls_id].append(add.item())
@@ -208,7 +212,7 @@ def eval_one_frame_pose(
     item
 ):
     pcld, mask, ctr_of, pred_kp_of, RTs, cls_ids, use_ctr, n_cls, \
-        min_cnt, use_ctr_clus_flter, label, epoch, ibs, gt_kps, gt_ctrs, kp_type = item
+        min_cnt, use_ctr_clus_flter, label, epoch, ibs, gt_kps, gt_ctrs, kp_type= item
 
     pred_cls_ids, pred_pose_lst, pred_kpc_lst = cal_frame_poses(
         pcld, mask, ctr_of, pred_kp_of, use_ctr, n_cls, use_ctr_clus_flter,
