@@ -2,6 +2,8 @@
 
 This is the official repository of paper 'ClearPose: Large-scale Transparent Object Dataset and Benchmark' in ECCV 2022. ([ArXiv](https://arxiv.org/abs/2203.03890), [Video](https://www.youtube.com/watch?v=i8LjxicAaps))
 
+![](dataset_sample.png)
+
 ## Dataset
 
 Google drive [link](https://drive.google.com/drive/folders/1Cp2cwwQmntE0aUkmHOLKIlG4Jiz9PQH8?usp=sharing)
