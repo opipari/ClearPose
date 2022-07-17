@@ -55,3 +55,7 @@ bbox: n*4
 We benchmarked two vision tasks, single image depth completion and object pose estimation, using end-to-end deep networks trained on the ClearPose dataset. For depth completion, we benchmarked ImplicitDepth and TransCG. For object pose estimation, we benchmarked [Xu et al.](https://www.mdpi.com/1424-8220/20/23/6790) (this method is not open-source and we implemented it based on the original paper) and [FFB6D](https://github.com/ethnhe/FFB6D). FFB6D is an RGB-D based pose estimation method, and we compare its performance with raw, completed depth from TransCG, and ground truth depth.
 
 As different deep networks might have different working python environments, we separate them to different branches. For each of them, most of network training and inference source code is the same as their original repository, while we added customized dataloader and evaluation code for our dataset. To reproduce and develop based on our code, please refer to README in specific branches.
+
+## License
+
+Licensed under MIT License
