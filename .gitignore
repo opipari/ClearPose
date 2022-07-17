@@ -20,3 +20,5 @@ data/
 *.json
 *.pdf
 *.pt
+
+!dataset_sample.png
