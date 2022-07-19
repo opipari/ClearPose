@@ -5,12 +5,12 @@ import torch
 from torchvision.utils import draw_bounding_boxes
 import torchvision.transforms.functional as F
 
-from clearpose.networks.references.detection.engine import train_one_epoch, evaluate
-import clearpose.networks.references.detection.utils as utils
-import clearpose.networks.references.detection.transforms as T
+from clearpose.xu_6dof.networks.references.detection.engine import train_one_epoch, evaluate
+import clearpose.xu_6dof.networks.references.detection.utils as utils
+import clearpose.xu_6dof.networks.references.detection.transforms as T
 
-from clearpose.networks.transparent6dofpose.stage1.transparent_segmentation.mask_rcnn import build_model
-from clearpose.datasets.transparent_segmentation_dataset import TransparentSegmentationDataset
+from clearpose.xu_6dof.networks.stage1.transparent_segmentation.mask_rcnn import build_model
+from clearpose.xu_6dof.datasets.transparent_segmentation_dataset import TransparentSegmentationDataset
 
 
 
@@ -39,8 +39,8 @@ def main():
 	device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 	# use our dataset and defined transformations
-	dataset = TransparentSegmentationDataset(transforms=get_transform(train=True))
-	dataset_test = TransparentSegmentationDataset(transforms=get_transform(train=False))
+	dataset = TransparentSegmentationDataset(image_list="./data/test_images.csv", transforms=get_transform(train=True))
+	dataset_test = TransparentSegmentationDataset(image_list="./data/test_images.csv", transforms=get_transform(train=False))
 
 	# split the dataset in train and test set
 	indices = torch.randperm(len(dataset)).tolist()
@@ -59,7 +59,7 @@ def main():
 	# get the model using our helper function
 	model = build_model({"num_classes": 63})
 
-	model.load_state_dict(torch.load("./mask_rcnn_14.pt"), strict=False)
+	model.load_state_dict(torch.load("./experiments/xu_6dof/stage1/transparent_segmentation/models/mask_rcnn_0.pt"), strict=False)
 	model.to(device)
 
 	# evaluate(model, data_loader_test, device=device)
