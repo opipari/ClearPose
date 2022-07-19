@@ -399,15 +399,14 @@ def main(save_dir=os.path.join("experiments","xu_6dof","stage2","models")):
 	params = [p for p in model.parameters() if p.requires_grad]
 	optimizer = torch.optim.Adam(params, lr=0.0005)
 
-	# let's train it for 10 epochs
+	# let's train it for 1000 epochs
 	num_epochs = 1000
-	model.load_state_dict(torch.load(os.path.join(save_dir,"stage2_15.pt"))['model_state_dict'])
-	optimizer.load_state_dict(torch.load(os.path.join(save_dir,"stage2_15.pt"))['optimizer_state_dict'])
-	#torch.save({'epoch': -1,
-	#			'model_state_dict': model.state_dict(),
-	#			'optimizer_state_dict': optimizer.state_dict()},
-	#			os.path.join(save_dir,"stage2_0.pt"))
-	for epoch in range(16, num_epochs):
+
+	torch.save({'epoch': -1,
+				'model_state_dict': model.state_dict(),
+				'optimizer_state_dict': optimizer.state_dict()},
+				os.path.join(save_dir,"stage2_0.pt"))
+	for epoch in range(num_epochs):
 		train_one_epoch(model, criterion, optimizer, data_loader, device, epoch, print_freq=100, logfile=logfile)
 		torch.save({'epoch': epoch,
 				'model_state_dict': model.state_dict(),

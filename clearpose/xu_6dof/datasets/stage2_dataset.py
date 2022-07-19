@@ -17,7 +17,7 @@ from pytorch3d.transforms import quaternion_apply, Translate
 class Stage2Dataset(Dataset):
 	def __init__(self, image_list="./data/images.csv", 
 					   object_list="./data/objects.csv",
-					   model_dir="./data",
+					   model_dir="./data/clearpose",
 					   transforms=None):
 		self.N = 500
 		self.N_mesh = 500

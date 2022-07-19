@@ -1,4 +1,4 @@
-# Xu et al. 6DoF Pose Estimation of Transparent Object from a Single RGB-D Image
+# Xu et al.
 
 This branch contains our reimplementation of the model presented by [Xu et al.](https://www.mdpi.com/1424-8220/20/23/6790).
 

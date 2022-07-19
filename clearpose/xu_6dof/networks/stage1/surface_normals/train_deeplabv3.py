@@ -83,7 +83,7 @@ def main(save_dir=os.path.join("experiments","xu_6dof","stage1","surface_normals
 	# 											   step_size=3,
 	# 											   gamma=0.1)
 	
-	# let's train it for 10 epochs
+	# let's train it for 100 epochs
 	num_epochs = 100
 
 	torch.save({'epoch': -1,
