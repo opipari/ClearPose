@@ -1,4 +1,6 @@
 import os
+import sys
+import argparse
 from scipy.io import loadmat
 
 def save_scene(scene, root_set, test_summary_file, img_id, sample_rate):
@@ -25,7 +27,7 @@ def save_scene(scene, root_set, test_summary_file, img_id, sample_rate):
 	return img_id, test_summary_file
 
 def standard_test(root, train_sets):
-	test_summary_file = open('./data/standard_test.csv', 'w')
+	test_summary_file = open('./data/test_images.csv', 'w')
 	img_id = 0
 	for sett in train_sets:
 		root_set = os.path.join(root, sett)
@@ -87,7 +89,7 @@ def non_planner_test(root):
 	test_summary_file.close()
 
 
-def train_set(root, train_sets):
+def standard_train(root, train_sets):
 	train_summary_file = open('./data/train_images.csv', 'w')
 	sets = [sett for sett in os.listdir(root) if sett.startswith('set')]
 	sets = [sett for sett in sets if sett in train_sets]
@@ -140,16 +142,15 @@ def set4_train(root):# water opaque unseen background
 	train_summary_file.close()
 	test_summary_file.close()
 
-def main():
+def main(args):
+	root = args.root
 
 	train_sets = ['set1','set4','set5','set6','set7']
-	root = "/home/yuzeren/data/downsample/clearpose"
-	# train_set(root, train_sets)
-
-
-	root = "/media/logan/1E10C4A130358D19/clearpose/"
 	sets = [sett for sett in os.listdir(root) if sett.startswith('set')]
+
+	standard_train(root, train_sets)
 	standard_test(root, train_sets)
+	
 	occlusion_test(root)
 	wou_test(root)
 	color_test(root)
@@ -160,4 +161,8 @@ def main():
 
 
 if __name__=="__main__":
-	main()
+	parser = argparse.ArgumentParser(description='Preprocess clearpose dataset into train/test splits.')
+	parser.add_argument('--root', type=str, help='path to root of clearpose dataset')
+	args = parser.parse_args()
+
+	main(args)

@@ -21,3 +21,6 @@ data/
 *.pdf
 *.pt
 *.txt
+
+# c++
+*build/
