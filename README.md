@@ -1,87 +1,29 @@
-# ClearPose
+# FFB6D
 
+## Install
 
-
+The source code of [FFB6D](https://github.com/ethnhe/FFB6D) is copied in ``clearpose/he_ffb6d/.`` We make some modification to train on clearpose dataset. Please follow the [FFB6D repo](https://github.com/ethnhe/FFB6D) for installation.
 ## Dataset
 
-
-## Models 
-
-
-### (RGB) Peng et al. PVNet
-
-<details>
-<summary><strong>Setup</strong></summary>
-
-Setup virtual environment 
-
+Please create a soft link for the dataset to the target path:
 ```bash
-python3 -m venv .venv/peng-pvnet-env
-source .venv/peng-pvnet-env/bin/activate
-pip install --upgrade pip
-pip install -r clearpose/peng_pvnet/requirements.txt
-pip install -e .
+ln -s <path/to/dataset> <path/to/clearpose>/clearpose/he_ffb6d/ffb6d/datasets/clearpose
 ```
 
-</details>
+## Train & Test
 
-### (RGB-D) He et al. FFB6D
-
-<details>
-<summary><strong>Setup</strong></summary>
-
-Setup virtual environment 
+Training
 
 ```bash
-python3 -m venv .venv/he-ffb6d-env
-source .venv/he-ffb6d-env/bin/activate
-pip install --upgrade pip
-pip install -r clearpose/he_ffb6d/requirements.txt
-pip install -e .
+cd <path/to/clearpose>/clearpose/he_ffb6d/ffb6d/
+python -m torch.distributed.launch --nproc_per_node=1 train_clearpose.py --gpu 0 --gpus=1 --opt_level O2 -train_depth_type GT -test_depth_type GT
+## train_depth_type in ["GT", "raw"]  test_depth_type in ["GT", "raw"]
 ```
 
-</details>
-
-
-### (RGB-D) Xu et al. 6DoF Transparent
-
-<details>
-<summary><strong>Setup</strong></summary>
-
-Setup virtual environment 
+Testing
 
 ```bash
-python3.8 -m venv .venv/xu-6dof-env
-source .venv/xu-6dof-env/bin/activate
-pip install --upgrade pip
-pip install -r clearpose/xu_6dof/requirements.txt
-pip install -e .
+cd <path/to/clearpose>/clearpose/he_ffb6d/ffb6d/
+python -m torch.distributed.launch --nproc_per_node=1 train_clearpose_test.py --gpu 0 -eval_net -checkpoint <path/to/checkpoint> -test_type wou -test_depth_type GT -test -test_pose -debug
+## test_type in ["wou", "occlusion", "non-planner", "covered", "color", "standard"]  test_depth_type in ["GT", "raw"]
 ```
-
-Compile the ransac voting layer:
-
-```bash
-cd clearpose/xu_6dof/networks/references/posenet/ransac_voting
-python setup.py install
-```
-
-</details>
-
-
-
-<details>
-<summary><strong>Training</strong></summary>
-
-Stage One
-
- - Mask R-CNN
- `python clearpose/xu_6dof/networks/stage1/transparent_segmentation/train_mask_rcnn.py`
-
- - DeepLabV3
- `python clearpose/xu_6dof/networks/stage1/surface_normals/train_deeplabv3.py`
-
-
-Stage Two
- - `python clearpose/xu_6dof/networks/stage2/train_stage2.py`
-
-</details>
