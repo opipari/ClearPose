@@ -70,7 +70,7 @@ def main(config={"num_classes": 63}, save_dir=os.path.join("experiments","xu_6do
 
 	logfile = open(os.path.join(save_dir,"finetune","mask_rcnn_log.txt"), 'w')
 
-	# let's train it for 10 epochs
+	# let's train it for 100 epochs
 	num_epochs = 100
 	
 	torch.save({'epoch': -1,
