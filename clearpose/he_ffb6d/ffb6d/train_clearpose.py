@@ -40,20 +40,6 @@ from apex import amp
 from apex.multi_tensor_apply import multi_tensor_applier
 
 
-config = Config(ds_name='clearpose')
-bs_utils = Basic_Utils(config)
-writer = SummaryWriter(log_dir=config.log_traininfo_dir)
-
-rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
-resource.setrlimit(resource.RLIMIT_NOFILE, (30000, rlimit[1]))
-
-color_lst = [(0, 0, 0)]
-for i in range(config.n_objects):
-    col_mul = (255 * 255 * 255) // (i+1)
-    color = (col_mul//(255*255), (col_mul//255) % 255, col_mul % 255)
-    color_lst.append(color)
-
-
 parser = argparse.ArgumentParser(description="Arg parser")
 parser.add_argument(
     "-weight_decay", type=float, default=0,
@@ -111,8 +97,26 @@ parser.add_argument('--opt_level', default="O0", type=str,
 parser.add_argument(
     "-test_type", type=str, help="test type"
 )
-
+parser.add_argument(
+    "-train_depth_type", type=str, help="train depth type should be [raw, GT]"
+)
+parser.add_argument(
+    "-test_depth_type", type=str, help="test depth type should be [raw, GT]"
+)
 args = parser.parse_args()
+
+config = Config(ds_name='clearpose', depth_train = args.train_depth_type, depth_test = args.test_depth_type)
+bs_utils = Basic_Utils(config)
+writer = SummaryWriter(log_dir=config.log_traininfo_dir)
+
+rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
+resource.setrlimit(resource.RLIMIT_NOFILE, (30000, rlimit[1]))
+
+color_lst = [(0, 0, 0)]
+for i in range(config.n_objects):
+    col_mul = (255 * 255 * 255) // (i+1)
+    color = (col_mul//(255*255), (col_mul//255) % 255, col_mul % 255)
+    color_lst.append(color)
 
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 

@@ -103,14 +103,14 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "-depth_type", type=str, help="test type"
+    "-test_depth_type", type=str, help="test type"
 )
 
 args = parser.parse_args()
 
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
-config = Config(ds_name='clearpose', test_type =args.depth_type)
+config = Config(ds_name='clearpose', depth_test =args.test_depth_type)
 bs_utils = Basic_Utils(config)
 writer = SummaryWriter(log_dir=config.log_traininfo_dir)
 

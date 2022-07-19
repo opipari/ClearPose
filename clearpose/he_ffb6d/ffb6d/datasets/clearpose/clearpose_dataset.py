@@ -195,10 +195,7 @@ class Dataset():
                 dpt_um = np.array(di)
         elif self.depth_type == "raw":
             with Image.open(os.path.join(self.root, scene_idx, set_idx, data_idx+'-depth.png')) as di:
-                dpt_um = np.array(di)          
-        elif self.depth_type == "depthcomplete":
-            with Image.open(os.path.join(self.root, scene_idx, set_idx, data_idx+'-pred.png')) as di:
-                dpt_um = np.array(di)               
+                dpt_um = np.array(di)                       
         with Image.open(os.path.join(self.root, scene_idx, set_idx, data_idx+'-label.png')) as li:
             labels = np.array(li)
         

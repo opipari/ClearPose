@@ -28,7 +28,7 @@ class ConfigRandLA:
 
 
 class Config:
-    def __init__(self, ds_name='ycb', cls_type='', test_type = 'GT'):
+    def __init__(self, ds_name='ycb', cls_type='', depth_train = "raw", depth_test = 'GT'):
         self.dataset_name = ds_name
         # self.exp_dir = os.path.dirname(__file__)
         self.exp_dir = "/home/huijie/research/transparentposeestimation/ClearPose/experiments/he_ffb6d"
@@ -101,7 +101,7 @@ class Config:
 
             self.n_classes = self.n_objects
             self.use_orbfps = False
-            self.clearpose_root = "/home/huijie/research/transparentposeestimation/ClearPose/clearpose/he_ffb6d/ffb6d/datasets/clearpose/dataset"
+            self.clearpose_root = "./datasets/clearpose/dataset"
 
             self.clearpose_obj_dict = {
             "beaker_1": 1,
@@ -171,34 +171,32 @@ class Config:
             self.clearpose_normal_cls = [1, 6, 7, 12, 14, 31, 32, 33, 34, 35, 36, 39, 40]
 
             self.clearpose_sym_cls_ids = [i for i in range(1, 64) if i not in self.clearpose_normal_cls]
-            # self.train_list = {
-            #     "set1": [1, 2, 3, 4],
-            #     "set4": [1, 2, 3, 4, 5],
-            #     "set5": [1, 2, 3, 4, 5],
-            #     "set6": [1, 2, 3, 4, 5],
-            #     "set7": [1, 2, 3, 4, 5]
-            # }
+            self.train_list = {
+                "set1": [1, 2, 3, 4],
+                "set4": [1, 2, 3, 4, 5],
+                "set5": [1, 2, 3, 4, 5],
+                "set6": [1, 2, 3, 4, 5],
+                "set7": [1, 2, 3, 4, 5]
+            }
 
-            # self.test_list = {
-            #     "set1": [5],
-            #     "set2": [1, 3, 4, 5, 6],
-            #     "set3": [1, 3, 4, 8, 11],
-            #     "set4": [6],
-            #     "set5": [6],
-            #     "set6": [6],
-            #     "set7": [6],
-            #     "set8": [1, 2, 3, 4, 5, 6]          
-            # }
-            self.train_list = {}
-            self.test_list = {}
+            self.test_list = {
+                "set1": [5],
+                "set2": [1, 3, 4, 5, 6],
+                "set3": [1, 3, 4, 8, 11],
+                "set4": [6],
+                "set5": [6],
+                "set6": [6],
+                "set7": [6],
+                "set8": [1, 2, 3, 4, 5, 6]          
+            }
 
             self.train_ratio = 1.0
-            self.test_ratio = 1.0
+            self.test_ratio = 0.01
 
-            ## train could be ["GT", "raw", "depthcomplete"]
-            self.depth_train = "raw"
-            assert test_type in ["GT", "raw", "depthcomplete_transcg_raw", "depthcomplete_transcg_mask", "depthcomplete_id_mask"]
-            self.depth_test = test_type
+            ## train could be ["GT", "raw"]
+            self.depth_train = depth_train
+            assert depth_test in ["GT", "raw"]
+            self.depth_test = depth_test
 
             self.mask_ignore = 0
 
