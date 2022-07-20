@@ -197,7 +197,7 @@ def test_quant(model, criterion, optimizer, data_loader, device, print_freq, log
 		
 		how_min, which_min = torch.min(pred_c, 1)
 		points = geom_crops[:,:,:,4:].flatten(start_dim=1, end_dim=2)[choose].view(geom_crops.shape[0], model.N, 3)
-		pred_t, pred_mask = ransac_voting_layer(points, pred_t, inlier_thresh=0.99)
+		pred_t, pred_mask, valid_ind = ransac_voting_layer(points, pred_t, inlier_thresh=0.99) # TODO: use valid_ind to filter out invalid predictions
 		
 		
 		pred_t = pred_t.cpu().data.numpy()
@@ -258,7 +258,7 @@ def test_qual(model, criterion, optimizer, dataset, device, print_freq, save_dir
 		print('loss',loss)
 		how_min, which_min = torch.min(pred_c, 1)
 		points = geom_crops[:,:,:,4:].flatten(start_dim=1, end_dim=2)[choose].view(geom_crops.shape[0], model.N, 3)
-		pred_t, pred_mask = ransac_voting_layer(points, pred_t, inlier_thresh=0.99)
+		pred_t, pred_mask, valid_ind = ransac_voting_layer(points, pred_t, inlier_thresh=0.99) # TODO: use valid_ind to filter out invalid predictions
 
 		# print("True Trans:", target_trans_gt)
 		# print("Estimated Trans:", pred_t)

@@ -53,6 +53,15 @@ Training Stage Two
 
 Testing
 
+Our script directly supports testing in 6 scenarios detailed in our paper (new background, heavy occlusion, etc.). 
+
+- First run 
+ `python data/preprocess.py`
+to generate xxx_test.csv in data/. 
+
+- Then change variable `input_path` and `output_path` on the first two lines of `__main__` function in clearpose/xu_6dof/networks/test_model.py to specify the testing file and the output file path, and variable `model_config` to specify trained model checkpoint path.
+- Run `python clearpose/xu_6dof/networks/test_model.py` to get evaluation results.
+
 <!-- ```bash
 cd <path/to/clearpose>/clearpose/he_ffb6d/ffb6d/
 python -m torch.distributed.launch --nproc_per_node=1 train_clearpose_test.py --gpu 0 -eval_net -checkpoint <path/to/checkpoint> -test_type wou -test_depth_type GT -test -test_pose -debug

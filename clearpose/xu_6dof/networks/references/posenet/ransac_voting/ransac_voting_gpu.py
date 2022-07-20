@@ -18,10 +18,11 @@ def ransac_voting_layer(cloud, pred_t, round_hyp_num=128, inlier_thresh=0.99, co
     vn = 1  # only voting for center
     batch_win_pts = []
     batch_inliers = []
+    batch_valid = []
     for bi in range(b):
         hyp_num = 0
         foreground_num = torch.tensor(pn, device=pred_t.device)
-        cur_mask = torch.ones([pn, 1], dtype=torch.uint8, device=pred_t.device)
+        cur_mask = torch.ones([pn, 1], dtype=torch.bool, device=pred_t.device)
         # if too few points, just skip it
         if foreground_num < min_num:
             win_pts = torch.zeros([1, 3], dtype=torch.float32, device=pred_t.device)
@@ -81,14 +82,26 @@ def ransac_voting_layer(cloud, pred_t, round_hyp_num=128, inlier_thresh=0.99, co
         A = torch.sum(S, 0)    # [3, 3]
         b = torch.sum(torch.bmm(S, inlier_coords), 0)   # [3, 1]
         # voting result
-        win_pts = torch.matmul(torch.inverse(A), b).permute(1, 0)     # [1, 3]
+        # A could be all zero, not inversible here
+        valid = True
+        try:
+            if torch.count_nonzero(A) == 0:
+                win_pts = torch.zeros((1, 3), dtype=torch.float, device=pred_t.device)
+                valid = False
+            else:
+                win_pts = torch.matmul(torch.inverse(A), b).permute(1, 0)     # [1, 3]
+        except Exception as e:
+            print(e)
+        batch_valid.append(valid)
         batch_win_pts.append(win_pts)
         # mask
         inliers = torch.squeeze(cur_mask, 1).repeat(vn, 1)   # [vn, pn]
         index = torch.squeeze(cur_mask, 1).nonzero().view([tn]).repeat(vn, 1)   # [vn, tn]
-        inliers.scatter_(1, index, all_inlier.permute(1, 0))
+        if valid:
+            inliers.scatter_(1, index, all_inlier.permute(1, 0))
         batch_inliers.append(inliers)
     batch_win_pts = torch.cat(batch_win_pts)
     batch_inliers = torch.squeeze(torch.cat(batch_inliers), 1)
+    batch_valid = torch.tensor(batch_valid, device=pred_t.device)
 
-    return batch_win_pts, batch_inliers
+    return batch_win_pts, batch_inliers, batch_valid

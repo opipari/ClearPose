@@ -267,9 +267,12 @@ def cal_adds_cuda(
 	mdis = torch.min(dis, dim=1)[0]
 	return torch.mean(mdis)
 
-def calculate_add_adds(pred_t, pred_r, pred_obj_ids, gt_t, gt_r, obj_pts):
+def calculate_add_adds(pred_t, pred_r, pred_obj_ids, gt_t, gt_r, obj_pts, valid_ind):
 	result = []
 	for i in range(pred_obj_ids.shape[0]):
+		if not valid_ind[i]:
+			result.append([pred_obj_ids[i].item(), 1000, 1000]) # invalid data point, set add and adds to be super large
+			continue
 		p_r = R.from_quat(pred_r[i].cpu().numpy()[[1, 2, 3, 0]]).as_matrix() # wxyz -> xyzw
 		p_RT = np.zeros((3, 4))
 		p_RT[:, :3] = p_r
@@ -301,7 +304,7 @@ def calculate_add_s_accuracy(result):
 	print('mean', sum(aucs) / len(aucs), sum(accs) / len(accs))
 
 def cal_auc(add_dis, max_dis=0.1):
-	D = np.array(add_dis)
+	D = np.array(add_dis).astype(float)
 	D[np.where(D > max_dis)] = np.inf
 	D = np.sort(D)
 	n = len(add_dis)
@@ -433,17 +436,17 @@ def draw(idx, rgb, pred_t, pred_r, pred_obj_ids, gt_t, gt_r, obj_pts):
 	cv2.imwrite(f"{idx}.png", img)
 
 if __name__=="__main__":
-
+	input_path = "data/occlusion_test.csv"
+	output_path = 'occlusion.npy'
 	verbose_plots = False
 
 	device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-	dataset_test = ClearPoseDataset(image_list="data/non-planner_test.csv", transforms=get_transform(train=False))
+	dataset_test = ClearPoseDataset(image_list=input_path, transforms=get_transform(train=False), model_dir='data/clearpose/')
 
-
-	model_config = {"mask_rcnn_model": os.path.join("experiments","xu_6dof","stage1","transparent_segmentation","models","finetune","mask_rcnn_8.pt"),
-					"deeplabv3_model": os.path.join("experiments","xu_6dof","stage1","surface_normals","models","deeplabv3_1.pt"),
-					"stage2_model": os.path.join("experiments","xu_6dof","stage2","models","stage2_18.pt")}
+	model_config = {"mask_rcnn_model": 'experiments/xu_6dof/stage1/transparent_segmentation/models/mask_rcnn_28.pt',
+					"deeplabv3_model": 'experiments/xu_6dof/stage1/surface_normals/models/deeplabv3_1.pt',
+					"stage2_model": 'experiments/xu_6dof/stage2/models/stage2_0.pt'}
 	model = build_model(model_config)
 	model.eval()
 	model.to(device)
@@ -541,25 +544,22 @@ if __name__=="__main__":
 			# target_mesh_rots = [t.unsqueeze(0) for t in targets[0]["mesh_rot"]][index_gt]
 			# target_symmetric = [t.unsqueeze(0) for t in targets[0]["symmetric"]][index_gt]
 			# pred_diameters = torch.stack([dataset_test.diameters[t.item()] for t in pred_obj_ids])
-
 		
 			#loss, loss_r, loss_reg, loss_t = criterion(pred_t, pred_r, pred_c, target_mesh_rots, target_trans, target_meshes, choose, target_symmetric, target_diameters)
 			#print('loss',loss)
 			
 			how_min, which_min = torch.min(pred_c, 1)
 			points = pred_crops_geom[:,:,:,4:].flatten(start_dim=1, end_dim=2)[choose].view(pred_crops_geom.shape[0], model.stage2_model.N, 3)
-			try:
-				pred_t, pred_mask = ransac_voting_layer(points, pred_t, inlier_thresh=0.1)
 
-				pred_r = torch.diagonal(pred_r[:,which_min]).permute(1,0)
-				# pred_boxes = segmentation_output[0]['boxes'][index]
-				# plot_test(color, dataset_test, pred_r, pred_t, pred_obj_ids, save_dir='.')
-				res = calculate_add_adds(pred_t, pred_r, pred_obj_ids, target_trans_gt, target_quats, targets[0]["mesh"][index_gt])
-				# draw(i, color, pred_t, pred_r, pred_obj_ids, target_trans_gt, target_quats, targets[0]["mesh"][index_gt])
-				result_all += res
+			pred_t, pred_mask, ransac_valid = ransac_voting_layer(points, pred_t, inlier_thresh=0.1)
+
+			pred_r = torch.diagonal(pred_r[:,which_min]).permute(1,0)
+			# pred_boxes = segmentation_output[0]['boxes'][index]
+			# plot_test(color, dataset_test, pred_r, pred_t, pred_obj_ids, save_dir='.')
+			res = calculate_add_adds(pred_t, pred_r, pred_obj_ids, target_trans_gt, target_quats, targets[0]["mesh"][index_gt], ransac_valid)
+			# draw(i, color, pred_t, pred_r, pred_obj_ids, target_trans_gt, target_quats, targets[0]["mesh"][index_gt])
+			result_all += res
 				
-			except Exception as e:
-				print(e)
 			i += 1
 			# for (id, r, t) in zip(pred_obj_ids, pred_r, pred_t):
 			# 	p_r = R.from_quat(r.cpu().numpy()[[1, 2, 3, 0]]).as_matrix() # wxyz -> xyzw
@@ -572,5 +572,5 @@ if __name__=="__main__":
 			# 	pkl.dump(pose_dict, f)
 			# break
 			# print(i)
-		calculate_add_s_accuracy(result_all)
-		np.save('occlusion.npy', result_all)
+		calculate_add_s_accuracy(result_all) # [id, add, adds] for false negatives add=adds=100, for ransac voting failures add=adds=1000
+		np.save(output_path, result_all)
