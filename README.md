@@ -56,6 +56,19 @@ We benchmarked two vision tasks, single image depth completion and object pose e
 
 As different deep networks might have different working python environments, we separate them to different branches. For each of them, most of network training and inference source code is the same as their original repository, while we added customized dataloader and evaluation code for our dataset. To reproduce and develop based on our code, please refer to README in specific branches.
 
+## Citation
+
+If you find this project relevant for your work, please consider citing the paper.
+
+```
+@inproceedings{chen2022clearpose,
+  title={ClearPose: Large-scale Transparent Object Dataset and Benchmark},
+  author={Chen, Xiaotong and Zhang, Huijie and Yu, Zeren and Opipari, Anthony and Jenkins, Odest Chadwicke},
+  booktitle={European Conference on Computer Vision},
+  year={2022}
+}
+```
+
 ## License
 
 Licensed under MIT License
