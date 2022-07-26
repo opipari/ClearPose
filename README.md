@@ -1,6 +1,6 @@
 # ClearPose
 
-This is the official repository of paper <a href="https://progress.eecs.umich.edu/projects/clearpose/" target="_blank">'ClearPose: Large-scale Transparent Object Dataset and Benchmark'</a> in ECCV 2022. ([ArXiv](https://arxiv.org/abs/2203.03890), [Video](https://www.youtube.com/watch?v=i8LjxicAaps))
+This is the official repository of paper ['ClearPose: Large-scale Transparent Object Dataset and Benchmark'](https://progress.eecs.umich.edu/projects/clearpose/) in ECCV 2022. ([ArXiv](https://arxiv.org/abs/2203.03890), [Video](https://www.youtube.com/watch?v=i8LjxicAaps))
 
 ![](dataset_sample.png)
 
