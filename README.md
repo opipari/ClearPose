@@ -69,6 +69,76 @@ If you find this project relevant for your work, please consider citing the pape
 }
 ```
 
+## Frequently Asked question
+ 1. Materials for objects 
+    <details><summary>object materail table</summary>
+
+    |      object name     | material |
+    |:--------------------:|----------|
+    |       beaker_1       |   glass  |
+    |       dropper_1      |  plastic |
+    |       dropper_2      |  plastic |
+    |        flask_1       |   glass  |
+    |       funnel_1       |  plastic |
+    | graduated_cylinder_1 |   glass  |
+    | graduated_cylinder_2 |  plastic |
+    |         pan_1        |  plastic |
+    |         pan_2        |  plastic |
+    |         pan_3        |   glass  |
+    |   reagent_bottle_1   |   glass  |
+    |   reagent_bottle_2   |  plastic |
+    |        stick_1       |   glass  |
+    |       syringe_1      |  plastic |
+    |       bottle_1       |   glass  |
+    |       bottle_2       |   glass  |
+    |       bottle_3       |   glass  |
+    |       bottle_4       |   glass  |
+    |       bottle_5       |   glass  |
+    |        bowl_1        |   glass  |
+    |        bowl_2        |   glass  |
+    |        bowl_3        |   glass  |
+    |        bowl_4        |   glass  |
+    |        bowl_5        |   glass  |
+    |        bowl_6        |   glass  |
+    |      container_1     |   glass  |
+    |      container_2     |   glass  |
+    |      container_3     |   glass  |
+    |      container_4     |   glass  |
+    |      container_5     |   glass  |
+    |        fork_1        |  plastic |
+    |        knife_1       |  plastic |
+    |        knife_2       |  plastic |
+    |         mug_1        |   glass  |
+    |         mug_2        |   glass  |
+    |       pitcher_1      |  plastic |
+    |        plate_1       |   glass  |
+    |        plate_2       |   glass  |
+    |        spoon_1       |  plastic |
+    |        spoon_2       |  plastic |
+    |      water_cup_1     |   glass  |
+    |      water_cup_3     |  plastic |
+    |      water_cup_4     |   glass  |
+    |      water_cup_5     |   glass  |
+    |      water_cup_6     |   glass  |
+    |      water_cup_7     |   glass  |
+    |      water_cup_8     |   glass  |
+    |      water_cup_9     |   glass  |
+    |     water_cup_10     |   glass  |
+    |     water_cup_11     |   glass  |
+    |     water_cup_12     |   glass  |
+    |     water_cup_13     |  plastic |
+    |     water_cup_14     |  plastic |
+    |      wine_cup_1      |   glass  |
+    |      wine_cup_2      |   glass  |
+    |      wine_cup_3      |   glass  |
+    |      wine_cup_4      |   glass  |
+    |      wine_cup_5      |   glass  |
+    |      wine_cup_6      |   glass  |
+    |      wine_cup_7      |  plastic |
+    |      wine_cup_8      |  plastic |
+    |      wine_cup_9      |   glass  |
+
+    </details>
 ## License
 
 Licensed under MIT License
