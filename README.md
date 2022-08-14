@@ -71,7 +71,7 @@ If you find this project relevant for your work, please consider citing the pape
 
 ## Frequently Asked question
  1. Materials for objects 
-    <details><summary>object materail table</summary>
+    <details><summary>object material table</summary>
 
     |      object name     | material |
     |:--------------------:|----------|
