@@ -58,6 +58,25 @@ We benchmarked two vision tasks, single image depth completion and object pose e
 
 As different deep networks might have different working python environments, we separate them to different branches. For each of them, most of network training and inference source code is the same as their original repository, while we added customized dataloader and evaluation code for our dataset. To reproduce and develop based on our code, please refer to README in specific branches.
 
+### Training/Test Dataset Split in paper
+
+training set:
+
+```
+set1: scene1-4, set4-7: scene1-5
+```
+
+test set:
+
+```
+heavy occlusion: set2, set3: all scenes
+new background: set1: scene5, set4-7: scene6
+with opaque objects: set8: scene1,2,3
+translucent cover: set8: scene4, set9: scene7,8
+non planar: set8: scene5, set9: scene11,12
+filled with liquid: set8: scene6, set9: scene9,10
+```
+
 ## Citation
 
 If you find this project relevant for your work, please consider citing the paper.
