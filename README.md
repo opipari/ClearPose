@@ -50,6 +50,7 @@ rotation_translation_matrix: camera pose matrix [R|t], 3*4 matrix
 center: n*2
 factor_depth: 1000
 bbox: n*4
+pose: 3*4*n object pose matrix as [Rotation matrix|translation vector]
 ```
 
 ## Benchmark experiments
